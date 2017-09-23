@@ -1,9 +1,17 @@
 #include <stdio.h>
 #define MAXBUF 4096 /* buf size */
 #define MAXTOKEN 4096 /* token size */
+#define MAXMEMORY 4096
 
 static int buf[MAXBUF];
-static int parseBuf[MAXBUF];
+static int memBuf[MAXBUF];
+static struct memory {
+    int* symbol;
+    int* val;
+    struct memory* nextp;
+} memoris[MAXMEMORY];
+static struct memory* top_memory;
+
 static struct token{
    int* tokenp;
    int size;
@@ -99,7 +107,10 @@ int myRead () {
     if (i > MAXTOKEN) {
         return 1;
     }
-    putToken();
+}
+int isSymbol () {
+}
+int isValue () {
 }
 void myEval () {
 }
