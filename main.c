@@ -3,6 +3,9 @@
 #define MAXTOKEN 4096 /* token size */
 #define MAXMEMORY 4096
 
+#define TRUE 0
+#define FALSE 1
+
 static int buf[MAXBUF];
 static int memBuf[MAXBUF];
 static struct memory {
@@ -101,16 +104,41 @@ int myRead () {
     int i;
     i = getBuf (buf,MAXBUF);
     if (i > MAXBUF) {
-        return 1;
+        return FALSE;
     }
     i = tokenize (buf, MAXBUF, tokens, MAXTOKEN);
     if (i > MAXTOKEN) {
-        return 1;
+        return FALSE;
     }
+    return TRUE;
 }
-int isSymbol () {
+int isNumber (struct token* x) {
+    int i;
+    for (i = 0;i < x->size;i++) {
+        if (('0' <= x->tokenp[i]) && (x->tokenp[i] <= '9')) { /* number */
+        } else if ((x->tokenp[i] == '+') || (x->tokenp[i] == '-')) { /* +- */
+        } else if (x->tokenp[i] == '.') { /* . */
+        } else {
+            return FALSE;
+        } 
+    }
+    return TRUE;
 }
-int isValue () {
+int isSymbol (struct token* x) {
+    int i;
+    if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
+        return FALSE;
+    }
+    if (isNumber (x)) {
+        return FALSE;
+    }
+    return TRUE;
+}
+int isLiteral (struct token* x) {
+    if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
+        return FALSE;
+    }
+    return isNumber (x);
 }
 void myEval () {
 }
@@ -122,7 +150,7 @@ int main () {
     while (1) {
         printf ("Lispy >");
         ret = myRead();
-        if (ret != 0) {
+        if (ret != TRUE) {
             printf("ERROR!!!!\n");
             break;
         }
