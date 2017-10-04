@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <float.h>
+
 #define MAXBUF 4096 /* buf size */
 #define MAXTOKEN 4096 /* token size */
 #define MAXMEMORY 4096
@@ -140,7 +142,7 @@ int isLiteral (struct token* x) {
     }
     return isNumber (x);
 }
-int* findSymbol (struct token* t) {
+struct memory* findSymbol (struct token* t) {
     int i;
     struct memory* m;
 
@@ -151,20 +153,60 @@ int* findSymbol (struct token* t) {
             }
         }
         if (i == t->size) {
-            return (m->val);
+            return m;
         }
     }
     return NULL;
 }
-int* Eval () {
+float myPow (int x) {
+    int i;
+    float ret = 1.0;
+    if (x != 0) {
+        for (i = 1;i <= x;i++) {
+            ret = ret * 0.1;
+        }
+    }
+    return ret;
+}
+float toFloat(int *p, int size) {
+    float ret,dec;
+    int i,c,n = 0;
+    for (i = 0,ret = 1;i < size;i++) {
+        c = p[i];
+        if (c == '-') { /* +- */
+            ret = ret * -1;
+        } else if (c == '.') { /* . */
+            n = 1;
+        } else if ('0' <= c && c <= '9') { /* 0~9 */
+            ret = (ret * 10) + (c - '0');
+            if (n != 0) {
+                n++;
+            }
+        }
+    }
+    if (n > 0) {
+        ret = ret * myPow (n);
+    }
+    return ret;
+}
+
+int mySize(int *x) {
+    int i;
+    for (i = 0;x[i] != '\0';i++) {;}
+    return i-1;
+}
+float Eval () {
     struct token* x = tokens;
+    struct memory* m;
     /* 変数参照 */
     if (isSymbol (x) == TRUE) {
-       return (findSymbol (x));
+       m = findSymbol (x);
+       return (toFloat (m->val, mySize(m->val)));
     /* 定数リテラル */
     } else if (isLiteral (x) == TRUE) {
+        return (toFloat (x->tokenp, x->size));
     }
-    return NULL;
+    return FLT_MAX;
     /* (quote exp) */ 
     /* (if test conseq alt) */
     /* (set! var exp) */
