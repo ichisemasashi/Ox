@@ -161,11 +161,10 @@ int* Eval () {
     /* 変数参照 */
     if (isSymbol (x) == TRUE) {
        return (findSymbol (x));
+    /* 定数リテラル */
+    } else if (isLiteral (x) == TRUE) {
     }
     return NULL;
-}
-void myEval () {
-    /* 定数リテラル */
     /* (quote exp) */ 
     /* (if test conseq alt) */
     /* (set! var exp) */
@@ -173,6 +172,8 @@ void myEval () {
     /* (lambda (var*) exp) */
     /* (begin exp*) */
     /* (proc exp*) */
+}
+void myEval () {
 }
 void myPrint () {
 }
