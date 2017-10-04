@@ -140,7 +140,39 @@ int isLiteral (struct token* x) {
     }
     return isNumber (x);
 }
+int* findSymbol (struct token* t) {
+    int i;
+    struct memory* m;
+
+    for (m = top_memory;m->nextp != NULL;m = m->nextp) {
+        for (i = 0; i < t->size; i++) {
+            if (t->tokenp[i] != m->symbol[i]) {
+                break;
+            }
+        }
+        if (i == t->size) {
+            return (m->val);
+        }
+    }
+    return NULL;
+}
+int* Eval () {
+    struct token* x = tokens;
+    /* 変数参照 */
+    if (isSymbol (x) == TRUE) {
+       return (findSymbol (x));
+    }
+    return NULL;
+}
 void myEval () {
+    /* 定数リテラル */
+    /* (quote exp) */ 
+    /* (if test conseq alt) */
+    /* (set! var exp) */
+    /* (define var exp) */
+    /* (lambda (var*) exp) */
+    /* (begin exp*) */
+    /* (proc exp*) */
 }
 void myPrint () {
 }
