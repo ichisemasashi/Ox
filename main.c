@@ -195,6 +195,19 @@ int mySize(int *x) {
     for (i = 0;x[i] != '\0';i++) {;}
     return i-1;
 }
+int isQuote (struct token* x) {
+    int result = FALSE;
+    if (x->size == 5) {
+        if ((x->tokenp[0] == 'q') &&
+            (x->tokenp[1] == 'u') &&
+            (x->tokenp[2] == 'o') &&
+            (x->tokenp[3] == 't') &&
+            (x->tokenp[4] == 'e')) {
+            result = TRUE;
+        }
+    }
+    return result;
+}
 float Eval () {
     struct token* x = tokens;
     struct memory* m;
@@ -205,9 +218,11 @@ float Eval () {
     /* 定数リテラル */
     } else if (isLiteral (x) == TRUE) {
         return (toFloat (x->tokenp, x->size));
+    /* (quote exp) */ 
+    } else if (isQuote (x->nextp) == TRUE) {
+        /* quoted list of x */
     }
     return FLT_MAX;
-    /* (quote exp) */ 
     /* (if test conseq alt) */
     /* (set! var exp) */
     /* (define var exp) */
