@@ -23,6 +23,25 @@ static struct token{
    struct token* nextp;
 } tokens[MAXTOKEN];
 
+enum useflag { use, not_use};
+enum typeflag { INT, FLOAT, STRING, CONS };
+
+struct Data {
+    enum typeflag typeflag;
+    enum useflag useflag;
+    int * int_data;
+    float * float_data;
+    char * char_data;
+    struct Cons * cons;
+};
+
+struct Cons {
+    struct Data * car; /* car */
+    struct Cons * cdr; /* cdr */
+    enum useflag useflag;
+};
+
+struct Cons ConsCells[MAXBUF];
 void putToken() {
     int i,j;
     for (i=0;tokens[i].nextp!=NULL;i++) {
