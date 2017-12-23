@@ -42,6 +42,10 @@ struct Cons {
 };
 
 struct Cons ConsCells[MAXBUF];
+struct Data Datas[MAXBUF];
+int index_of_Consceslls;
+int index_of_Datas;
+
 void putToken() {
     int i,j;
     for (i=0;tokens[i].nextp!=NULL;i++) {
@@ -63,7 +67,7 @@ int getBuf (int s[], int limit) {
             if (p == 0) {
                 break;
             }
-        } 
+        }
     }
     s[i] = '\0';
     return i;
@@ -141,7 +145,7 @@ int isNumber (struct token* x) {
         } else if (x->tokenp[i] == '.') { /* . */
         } else {
             return FALSE;
-        } 
+        }
     }
     return TRUE;
 }
@@ -227,6 +231,47 @@ int isQuote (struct token* x) {
     }
     return result;
 }
+void initCells() {
+    int i;
+    for (i=0;i<MAXBUF;i++) {
+      ConsCells[i].useflag = not_use;
+      Datas[i].useflag = not_use;
+    }
+    index_of_Consceslls = 0;
+    index_of_Datas = 0;
+}
+int getConsCell () {
+  int i,loop;
+  for (loop = 0,i=index_of_Consceslls;i<MAXBUF;i++) {
+    if (ConsCells[i].useflag == not_use) {
+      break;
+    }
+    if ((loop == 0) && (i == (MAXBUF - 1))) {
+      loop++;
+      i = 0;
+      continue;
+    }
+
+  }
+  index_of_Consceslls = i;
+  return i;
+}
+int getData () {
+  int i,loop;
+  for (loop = 0,i = index_of_Datas;i< MAXBUF; i++) {
+    if (i == MAXBUF -1) {
+      loop++;
+      i = 0;
+      continue;
+    }
+    if (Datas[i].useflag == not_use) {
+      break;
+    }
+  }
+  index_of_Datas = i;
+  return i;
+}
+
 float Eval () {
     struct token* x = tokens;
     struct memory* m;
@@ -237,7 +282,7 @@ float Eval () {
     /* 定数リテラル */
     } else if (isLiteral (x) == TRUE) {
         return (toFloat (x->tokenp, x->size));
-    /* (quote exp) */ 
+    /* (quote exp) */
     } else if (isQuote (x->nextp) == TRUE) {
         /* quoted list of x */
     }
@@ -256,6 +301,8 @@ void myPrint () {
 int main () {
     int ret;
     printf("my version lispy...\n");
+    initCells();
+
     while (1) {
         printf ("Lispy >");
         ret = myRead();
