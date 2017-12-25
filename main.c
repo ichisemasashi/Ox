@@ -29,8 +29,8 @@ enum typeflag { INT, FLOAT, STRING, CONS };
 struct Data {
     enum typeflag typeflag;
     enum useflag useflag;
-    int * int_data;
-    float * float_data;
+    int int_data;
+    float float_data;
     char * char_data;
     struct Cons * cons;
 };
