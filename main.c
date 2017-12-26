@@ -24,14 +24,14 @@ static struct token{
 } tokens[MAXTOKEN];
 
 enum useflag { use, not_use};
-enum typeflag { INT, FLOAT, STRING, CONS };
+enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL};
 
 struct Data {
     enum typeflag typeflag;
     enum useflag useflag;
     int int_data;
     float float_data;
-    char * char_data;
+    char char_data[20];
     struct Cons * cons;
 };
 
@@ -149,8 +149,28 @@ int isNumber (struct token* x) {
     }
     return TRUE;
 }
-int isSymbol (struct token* x) {
+int isFloat (struct token* x) {
     int i;
+    int flag = FALSE;
+    for (i=0;i < x->size;i++) {
+        if (x->tokenp[i] == '.') {
+            flag = TRUE;
+            break;
+        }
+    }
+    return flag;
+}
+
+int isString (struct token* x) {
+    int result;
+    if ( (x->tokenp[0] == '"') && (x->tokenp[x->size - 1] == '"')) {
+        result = TRUE;
+    } else {
+        result = FALSE;
+    }
+    return result;
+}
+int isSymbol (struct token* x) {
     if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
         return FALSE;
     }
