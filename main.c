@@ -4,6 +4,7 @@
 #define MAXBUF 4096 /* buf size */
 #define MAXTOKEN 4096 /* token size */
 #define MAXMEMORY 4096
+#define MAXSTRINGS 20
 
 #define TRUE 0
 #define FALSE 1
@@ -31,7 +32,7 @@ struct Data {
     enum useflag useflag;
     int int_data;
     float float_data;
-    char char_data[20];
+    char char_data[MAXSTRINGS];
     struct Cons * cons;
 };
 
@@ -45,6 +46,16 @@ struct Cons ConsCells[MAXBUF];
 struct Data Datas[MAXBUF];
 int index_of_Consceslls;
 int index_of_Datas;
+
+/* prot type */
+int isNumber(struct token*);
+int isFloat (struct token*);
+int isString (struct token*);
+int copyString(struct token *, struct Data *);
+int getData ();
+int isParlen (struct token* );
+float toFloat(int *, int);
+int toInt(struct token *);
 
 void putToken() {
     int i,j;
@@ -125,6 +136,50 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
     }
     return o;
 }
+int readAtom (struct token* in, struct Data *data) {
+  int result;
+  if (isNumber(in) == TRUE) {
+    if (isFloat (in) == TRUE) {
+      data->typeflag = FLOAT;
+      data->float_data = toFloat(in->tokenp,in->size);
+    } else { /* Int */
+      data->typeflag = INT;
+      data->int_data = toInt(in);
+    }
+  }else if (isString(in) == TRUE) {
+    data->typeflag = STRING;
+    result = copyString(in,data);
+    if (result == FALSE) {
+      return FALSE;
+    }
+  } else { /* Symbol */
+    data->typeflag = SYMBOL;
+    result = copyString (in, data);
+    if (result == FALSE) {
+      return FALSE;
+    }
+  }
+  return TRUE;
+}
+
+int copyString(struct token *from, struct Data *to) {
+  int i;
+
+  if (from->size >=MAXSTRINGS) {
+    return FALSE;
+  }
+
+  for (i=0;i<from->size;i++) {
+    to->char_data[i] = (char) from->tokenp[i];
+  }
+
+  return TRUE;
+}
+
+int readS (struct Data *data) {
+  return TRUE;
+}
+
 int myRead () {
     int i;
     i = getBuf (buf,MAXBUF);
@@ -135,8 +190,40 @@ int myRead () {
     if (i > MAXTOKEN) {
         return FALSE;
     }
+    i = getData();
+    if (i == MAXBUF) {
+      return FALSE;
+    }
+    Datas[i].useflag = use;
+    /* S式ならreadS */
+    /* S式でないならreadAtom */
+    if (isParlen(&tokens[0]) == TRUE) {
+        readS(&Datas[i]);
+    } else {
+      readAtom (&tokens[0],&Datas[i]);
+    }
+
     return TRUE;
 }
+int isParlen (struct token* p) {
+  int result = FALSE;
+  if (p->size == 1) {
+    if ( (p->tokenp[0] == '(') || (p->tokenp[0] == ')') ) {
+      result = TRUE;
+    }
+  }
+  return result;
+}
+int isParlenStart (struct token* p) {
+  if (p->size == 1) {
+    if (p->tokenp[0] == '(') {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
 int isNumber (struct token* x) {
     int i;
     for (i = 0;i < x->size;i++) {
@@ -211,6 +298,17 @@ float myPow (int x) {
     }
     return ret;
 }
+int toInt(struct token *p) {
+  int result, i;
+  for(i=0;i<p->size;i++) {
+    result = p->tokenp[i] - '0';
+    if (i < p->size - 1) {
+      result = result * 10;
+    }
+  }
+  return result;
+}
+
 float toFloat(int *p, int size) {
     float ret,dec;
     int i,c,n = 0;
