@@ -25,7 +25,7 @@ static struct token{
 } tokens[MAXTOKEN];
 
 enum useflag { use, not_use};
-enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL};
+enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL, NIL};
 
 struct Data {
     enum typeflag typeflag;
@@ -54,8 +54,11 @@ int isString (struct token*);
 int copyString(struct token *, struct Data *);
 int getData ();
 int isParlen (struct token* );
+int isParlenEnd(struct token*);
+int isParlenStart(struct token*);
 float toFloat(int *, int);
 int toInt(struct token *);
+int getConsCell();
 
 void putToken() {
     int i,j;
@@ -137,47 +140,115 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
     return o;
 }
 int readAtom (struct token* in, struct Data *data) {
-  int result;
-  if (isNumber(in) == TRUE) {
-    if (isFloat (in) == TRUE) {
-      data->typeflag = FLOAT;
-      data->float_data = toFloat(in->tokenp,in->size);
-    } else { /* Int */
-      data->typeflag = INT;
-      data->int_data = toInt(in);
+    int result;
+    if (isNumber(in) == TRUE) {
+        if (isFloat (in) == TRUE) {
+            data->typeflag = FLOAT;
+            data->float_data = toFloat(in->tokenp,in->size);
+        } else { /* Int */
+            data->typeflag = INT;
+            data->int_data = toInt(in);
+        }
+    } else if (isString(in) == TRUE) {
+        data->typeflag = STRING;
+        result = copyString(in,data);
+        if (result == FALSE) {
+            return FALSE;
+        }
+    } else { /* Symbol */
+        data->typeflag = SYMBOL;
+        result = copyString (in, data);
+        if (result == FALSE) {
+          return FALSE;
+        }
     }
-  }else if (isString(in) == TRUE) {
-    data->typeflag = STRING;
-    result = copyString(in,data);
-    if (result == FALSE) {
-      return FALSE;
-    }
-  } else { /* Symbol */
-    data->typeflag = SYMBOL;
-    result = copyString (in, data);
-    if (result == FALSE) {
-      return FALSE;
-    }
-  }
-  return TRUE;
+    return TRUE;
 }
 
 int copyString(struct token *from, struct Data *to) {
-  int i;
+    int i;
 
-  if (from->size >=MAXSTRINGS) {
-    return FALSE;
-  }
+    if (from->size >=MAXSTRINGS) {
+        return FALSE;
+    }
 
-  for (i=0;i<from->size;i++) {
-    to->char_data[i] = (char) from->tokenp[i];
-  }
+    for (i=0;i<from->size;i++) {
+        to->char_data[i] = (char) from->tokenp[i];
+    }
 
-  return TRUE;
+    return TRUE;
 }
 
-int readS (struct Data *data) {
-  return TRUE;
+int readS (struct token *from, struct Data *to) {
+    int i,result;
+    struct Cons *nextCell;
+
+    to->typeflag =CONS;
+    i = getConsCell();
+    if (i == MAXBUF) {
+        return FALSE;
+    }
+    to->cons = &ConsCells[i];
+    nextCell = &ConsCells[i];
+
+    if (isParlenEnd (from->nextp) == TRUE) {
+      from = from->nextp;
+      /* '() is as a atom */
+      i = getData();
+      if (i == MAXBUF) {
+        return FALSE;
+      }
+      Datas[i].useflag = use;
+      Datas[i].typeflag = NIL;
+      nextCell->car = &Datas[i];
+      i = getConsCell();
+      if (i == MAXBUF) {
+        return FALSE;
+      }
+      nextCell->cdr = &ConsCells[i];
+      nextCell = &ConsCells[i];
+      nextCell->useflag = use;
+      i = getData();
+      if (i == MAXBUF) {
+        return FALSE;
+      }
+      to = &Datas[i];
+
+      return TRUE;
+    }
+
+    while (from->nextp != NULL) {
+        from = from->nextp;
+        if (isParlenEnd (from) == TRUE) {
+            /* end of S-exp */
+        } else if ((isParlenStart (from) == TRUE) && (isParlenEnd (from->nextp) == TRUE )) {
+            /* '() is as a atom */
+            i = getData ();
+            if (i==MAXBUF) {
+                return FALSE;
+            }
+            Datas[i].useflag = use;
+            Datas[i].typeflag = NIL;
+            nextCell->car =&Datas[i];
+            i = getConsCell ();
+            if (i == MAXBUF) {
+                return FALSE;
+            }
+            nextCell->cdr = &ConsCells[i];
+            nextCell = &ConsCells[i];
+                        nextCell->useflag = use;
+
+        } else if (isParlenStart (from) == TRUE) {
+            /* start of S-exp */
+            i = getData ();
+            if (i == MAXBUF) {
+                return FALSE;
+            }
+            to = &Datas[i];
+            readS (from, to);
+        }
+    }
+    return TRUE;
 }
 
 int myRead () {
@@ -198,7 +269,7 @@ int myRead () {
     /* S式ならreadS */
     /* S式でないならreadAtom */
     if (isParlen(&tokens[0]) == TRUE) {
-        readS(&Datas[i]);
+        readS(&tokens[0], &Datas[i]);
     } else {
       readAtom (&tokens[0],&Datas[i]);
     }
@@ -206,23 +277,30 @@ int myRead () {
     return TRUE;
 }
 int isParlen (struct token* p) {
-  int result = FALSE;
-  if (p->size == 1) {
-    if ( (p->tokenp[0] == '(') || (p->tokenp[0] == ')') ) {
-      result = TRUE;
+    int result = FALSE;
+    if (p->size == 1) {
+        if ( (p->tokenp[0] == '(') || (p->tokenp[0] == ')') ) {
+            result = TRUE;
+        }
     }
-  }
-  return result;
+    return result;
 }
 int isParlenStart (struct token* p) {
+    if (p->size == 1) {
+        if (p->tokenp[0] == '(') {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+int isParlenEnd (struct token *p) {
   if (p->size == 1) {
-    if (p->tokenp[0] == '(') {
+    if (p->tokenp[0] == ')') {
       return TRUE;
     }
   }
   return FALSE;
 }
-
 
 int isNumber (struct token* x) {
     int i;
@@ -299,14 +377,14 @@ float myPow (int x) {
     return ret;
 }
 int toInt(struct token *p) {
-  int result, i;
-  for(i=0;i<p->size;i++) {
-    result = p->tokenp[i] - '0';
-    if (i < p->size - 1) {
-      result = result * 10;
+    int result, i;
+    for(i=0;i<p->size;i++) {
+        result = p->tokenp[i] - '0';
+        if (i < p->size - 1) {
+            result = result * 10;
+        }
     }
-  }
-  return result;
+    return result;
 }
 
 float toFloat(int *p, int size) {
@@ -375,19 +453,19 @@ int getConsCell () {
   return i;
 }
 int getData () {
-  int i,loop;
-  for (loop = 0,i = index_of_Datas;i< MAXBUF; i++) {
-    if (i == MAXBUF -1) {
-      loop++;
-      i = 0;
-      continue;
+    int i,loop;
+    for (loop = 0,i = index_of_Datas;i< MAXBUF; i++) {
+        if (i == MAXBUF -1) {
+          loop++;
+          i = 0;
+          continue;
+        }
+        if (Datas[i].useflag == not_use) {
+            break;
+        }
     }
-    if (Datas[i].useflag == not_use) {
-      break;
-    }
-  }
-  index_of_Datas = i;
-  return i;
+    index_of_Datas = i;
+    return i;
 }
 
 float Eval () {
