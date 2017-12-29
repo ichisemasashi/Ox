@@ -6,9 +6,6 @@
 #define MAXMEMORY 4096
 #define MAXSTRINGS 20
 
-#define TRUE 0
-#define FALSE 1
-
 static int buf[MAXBUF];
 static int memBuf[MAXBUF];
 static struct memory {
@@ -26,6 +23,7 @@ static struct token{
 
 enum useflag { use, not_use};
 enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL, NIL};
+typedef enum {true, false} bool;
 
 struct Data {
     enum typeflag typeflag;
@@ -48,14 +46,14 @@ int index_of_Consceslls;
 int index_of_Datas;
 
 /* prot type */
-int isNumber(struct token*);
-int isFloat (struct token*);
-int isString (struct token*);
-int copyString(struct token *, struct Data *);
+bool isNumber(struct token*);
+bool isFloat (struct token*);
+bool isString (struct token*);
+bool copyString(struct token *, struct Data *);
 int getData ();
-int isParlen (struct token* );
-int isParlenEnd(struct token*);
-int isParlenStart(struct token*);
+bool isParlen (struct token* );
+bool isParlenEnd(struct token*);
+bool isParlenStart(struct token*);
 float toFloat(int *, int);
 int toInt(struct token *);
 int getConsCell();
@@ -139,214 +137,202 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
     }
     return o;
 }
-int readAtom (struct token* in, struct Data *data) {
-    int result;
-    if (isNumber(in) == TRUE) {
-        if (isFloat (in) == TRUE) {
+bool readAtom (struct token* in, struct Data *data) {
+    bool result;
+    if (isNumber(in) == true) {
+        if (isFloat (in) == true) {
             data->typeflag = FLOAT;
             data->float_data = toFloat(in->tokenp,in->size);
         } else { /* Int */
             data->typeflag = INT;
             data->int_data = toInt(in);
         }
-    } else if (isString(in) == TRUE) {
+    } else if (isString(in) == true) {
         data->typeflag = STRING;
         result = copyString(in,data);
-        if (result == FALSE) {
-            return FALSE;
+        if (result == false) {
+            return false;
         }
     } else { /* Symbol */
         data->typeflag = SYMBOL;
         result = copyString (in, data);
-        if (result == FALSE) {
-          return FALSE;
+        if (result == false) {
+          return false;
         }
     }
-    return TRUE;
+    return true;
 }
 
-int copyString(struct token *from, struct Data *to) {
+bool copyString(struct token *from, struct Data *to) {
     int i;
 
     if (from->size >=MAXSTRINGS) {
-        return FALSE;
+        return false;
     }
 
     for (i=0;i<from->size;i++) {
         to->char_data[i] = (char) from->tokenp[i];
     }
 
-    return TRUE;
+    return true;
 }
 
-int readS (struct token *from, struct Data *to) {
-    int i,result;
+bool readS (struct token *from, struct Data *to) {
+    int i;
+    bool result;
     struct Cons *nextCell;
 
     to->typeflag =CONS;
-    i = getConsCell();
-    if (i == MAXBUF) {
-        return FALSE;
+    if ((i = getConsCell()) == MAXBUF) {
+        return false;
     }
     to->cons = &ConsCells[i];
     nextCell = &ConsCells[i];
 
-    if (isParlenEnd (from->nextp) == TRUE) {
+    if (isParlenEnd (from->nextp) == true) {
       from = from->nextp;
       /* '() is as a atom */
-      i = getData();
-      if (i == MAXBUF) {
-        return FALSE;
+      if ((i = getData()) == MAXBUF) {
+        return false;
       }
       Datas[i].useflag = use;
       Datas[i].typeflag = NIL;
       nextCell->car = &Datas[i];
-      i = getConsCell();
-      if (i == MAXBUF) {
-        return FALSE;
-      }
-      nextCell->cdr = &ConsCells[i];
-      nextCell = &ConsCells[i];
-      nextCell->useflag = use;
-      i = getData();
-      if (i == MAXBUF) {
-        return FALSE;
-      }
-      to = &Datas[i];
+      nextCell->cdr = NULL;
 
-      return TRUE;
+      return true;
     }
 
     while (from->nextp != NULL) {
         from = from->nextp;
-        if (isParlenEnd (from) == TRUE) {
+        if (isParlenEnd (from) == true) {
             /* end of S-exp */
-        } else if ((isParlenStart (from) == TRUE) && (isParlenEnd (from->nextp) == TRUE )) {
+        } else if ((isParlenStart (from) == true) && (isParlenEnd (from->nextp) == true)) {
             /* '() is as a atom */
             i = getData ();
             if (i==MAXBUF) {
-                return FALSE;
+                return false;
             }
             Datas[i].useflag = use;
             Datas[i].typeflag = NIL;
             nextCell->car =&Datas[i];
             i = getConsCell ();
             if (i == MAXBUF) {
-                return FALSE;
+                return false;
             }
             nextCell->cdr = &ConsCells[i];
             nextCell = &ConsCells[i];
                         nextCell->useflag = use;
 
-        } else if (isParlenStart (from) == TRUE) {
+        } else if (isParlenStart (from) == true) {
             /* start of S-exp */
             i = getData ();
             if (i == MAXBUF) {
-                return FALSE;
+                return false;
             }
             to = &Datas[i];
             readS (from, to);
         }
     }
-    return TRUE;
+    return true;
 }
 
-int myRead () {
+bool myRead () {
     int i;
     i = getBuf (buf,MAXBUF);
     if (i > MAXBUF) {
-        return FALSE;
+        return false;
     }
     i = tokenize (buf, MAXBUF, tokens, MAXTOKEN);
     if (i > MAXTOKEN) {
-        return FALSE;
+        return false;
     }
     i = getData();
     if (i == MAXBUF) {
-      return FALSE;
+      return false;
     }
     Datas[i].useflag = use;
     /* S式ならreadS */
     /* S式でないならreadAtom */
-    if (isParlen(&tokens[0]) == TRUE) {
+    if (isParlen(&tokens[0]) == true) {
         readS(&tokens[0], &Datas[i]);
     } else {
       readAtom (&tokens[0],&Datas[i]);
     }
 
-    return TRUE;
+    return true;
 }
-int isParlen (struct token* p) {
-    int result = FALSE;
+bool isParlen (struct token* p) {
+    bool result = false;
     if (p->size == 1) {
         if ( (p->tokenp[0] == '(') || (p->tokenp[0] == ')') ) {
-            result = TRUE;
+            result = true;
         }
     }
     return result;
 }
-int isParlenStart (struct token* p) {
+bool isParlenStart (struct token* p) {
     if (p->size == 1) {
         if (p->tokenp[0] == '(') {
-            return TRUE;
+            return true;
         }
     }
-    return FALSE;
+    return false;
 }
-int isParlenEnd (struct token *p) {
+bool isParlenEnd (struct token *p) {
   if (p->size == 1) {
     if (p->tokenp[0] == ')') {
-      return TRUE;
+      return true;
     }
   }
-  return FALSE;
+  return false;
 }
 
-int isNumber (struct token* x) {
+bool isNumber (struct token* x) {
     int i;
     for (i = 0;i < x->size;i++) {
         if (('0' <= x->tokenp[i]) && (x->tokenp[i] <= '9')) { /* number */
         } else if ((x->tokenp[i] == '+') || (x->tokenp[i] == '-')) { /* +- */
         } else if (x->tokenp[i] == '.') { /* . */
         } else {
-            return FALSE;
+            return false;
         }
     }
-    return TRUE;
+    return true;
 }
-int isFloat (struct token* x) {
+bool isFloat (struct token* x) {
     int i;
-    int flag = FALSE;
+    bool flag = false;
     for (i=0;i < x->size;i++) {
         if (x->tokenp[i] == '.') {
-            flag = TRUE;
+            flag = true;
             break;
         }
     }
     return flag;
 }
 
-int isString (struct token* x) {
-    int result;
+bool isString (struct token* x) {
+    bool result;
     if ( (x->tokenp[0] == '"') && (x->tokenp[x->size - 1] == '"')) {
-        result = TRUE;
+        result = true;
     } else {
-        result = FALSE;
+        result = false;
     }
     return result;
 }
-int isSymbol (struct token* x) {
+bool isSymbol (struct token* x) {
     if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
-        return FALSE;
+        return false;
     }
     if (isNumber (x)) {
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
-int isLiteral (struct token* x) {
+bool isLiteral (struct token* x) {
     if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
-        return FALSE;
+        return false;
     }
     return isNumber (x);
 }
@@ -414,15 +400,15 @@ int mySize(int *x) {
     for (i = 0;x[i] != '\0';i++) {;}
     return i-1;
 }
-int isQuote (struct token* x) {
-    int result = FALSE;
+bool isQuote (struct token* x) {
+    bool result = false;
     if (x->size == 5) {
         if ((x->tokenp[0] == 'q') &&
             (x->tokenp[1] == 'u') &&
             (x->tokenp[2] == 'o') &&
             (x->tokenp[3] == 't') &&
             (x->tokenp[4] == 'e')) {
-            result = TRUE;
+            result = true;
         }
     }
     return result;
@@ -472,14 +458,14 @@ float Eval () {
     struct token* x = tokens;
     struct memory* m;
     /* 変数参照 */
-    if (isSymbol (x) == TRUE) {
+    if (isSymbol (x) == true) {
        m = findSymbol (x);
        return (toFloat (m->val, mySize(m->val)));
     /* 定数リテラル */
-    } else if (isLiteral (x) == TRUE) {
+    } else if (isLiteral (x) == true) {
         return (toFloat (x->tokenp, x->size));
     /* (quote exp) */
-    } else if (isQuote (x->nextp) == TRUE) {
+    } else if (isQuote (x->nextp) == true) {
         /* quoted list of x */
     }
     return FLT_MAX;
@@ -495,14 +481,14 @@ void myEval () {
 void myPrint () {
 }
 int main () {
-    int ret;
+    bool ret;
     printf("my version lispy...\n");
     initCells();
 
     while (1) {
         printf ("Lispy >");
         ret = myRead();
-        if (ret != TRUE) {
+        if (ret != true) {
             printf("ERROR!!!!\n");
             break;
         }
