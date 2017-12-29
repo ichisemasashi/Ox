@@ -54,6 +54,7 @@ int getData ();
 bool isParlen (struct token* );
 bool isParlenEnd(struct token*);
 bool isParlenStart(struct token*);
+bool isNil (struct token*);
 float toFloat(int *, int);
 int toInt(struct token *);
 int getConsCell();
@@ -139,7 +140,9 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
 }
 bool readAtom (struct token* in, struct Data *data) {
     bool result;
-    if (isNumber(in) == true) {
+    if (isNil(in) == true) {
+        data->typeflag = NIL;
+    } else if (isNumber(in) == true) {
         if (isFloat (in) == true) {
             data->typeflag = FLOAT;
             data->float_data = toFloat(in->tokenp,in->size);
@@ -207,31 +210,41 @@ bool readS (struct token *from, struct Data *to) {
         from = from->nextp;
         if (isParlenEnd (from) == true) {
             /* end of S-exp */
+            nextCell->cdr = NULL;
+            return true;
         } else if ((isParlenStart (from) == true) && (isParlenEnd (from->nextp) == true)) {
             /* '() is as a atom */
-            i = getData ();
-            if (i==MAXBUF) {
+            if ((i = getData ()) ==MAXBUF) {
                 return false;
             }
             Datas[i].useflag = use;
             Datas[i].typeflag = NIL;
-            nextCell->car =&Datas[i];
-            i = getConsCell ();
-            if (i == MAXBUF) {
+            nextCell->car = &Datas[i];
+            if ((i = getConsCell ()) == MAXBUF) {
                 return false;
             }
             nextCell->cdr = &ConsCells[i];
             nextCell = &ConsCells[i];
-                        nextCell->useflag = use;
+            nextCell->useflag = use;
 
         } else if (isParlenStart (from) == true) {
             /* start of S-exp */
-            i = getData ();
-            if (i == MAXBUF) {
+            if ((i = getData ()) == MAXBUF) {
                 return false;
             }
             to = &Datas[i];
             readS (from, to);
+        } else {
+            /* read Atom */
+            if ((i = getData()) == MAXBUF) {
+                return false;
+            }
+            to = &Datas[i];
+            to->useflag = use;
+            nextCell->car = &Datas[i];
+            if (readAtom (from, to) == false) {
+                return false;
+            }
         }
     }
     return true;
@@ -255,9 +268,13 @@ bool myRead () {
     /* S式ならreadS */
     /* S式でないならreadAtom */
     if (isParlen(&tokens[0]) == true) {
-        readS(&tokens[0], &Datas[i]);
+        if (readS(&tokens[0], &Datas[i]) == false) {
+            return false;
+        }
     } else {
-      readAtom (&tokens[0],&Datas[i]);
+        if (readAtom (&tokens[0],&Datas[i]) == false) {
+            return false;
+        }
     }
 
     return true;
@@ -288,6 +305,16 @@ bool isParlenEnd (struct token *p) {
   return false;
 }
 
+bool isNil (struct token *p) {
+    if (p->size == 3) {
+        if (((p->tokenp[0] == 'n') || (p->tokenp[0] == 'N')) &&
+           ((p->tokenp[1] == 'i') || (p->tokenp[1] == 'I')) &&
+           ((p->tokenp[2] == 'l') || (p->tokenp[2] == 'L')) ) {
+           return true;
+        }
+    }
+    return false;
+}
 bool isNumber (struct token* x) {
     int i;
     for (i = 0;i < x->size;i++) {
