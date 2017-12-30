@@ -193,23 +193,29 @@ bool readS (struct token *from, struct Data *to) {
     nextCell = &ConsCells[i];
 
     if (isParlenEnd (from->nextp) == true) {
-      from = from->nextp;
-      /* '() is as a atom */
-      if ((i = getData()) == MAXBUF) {
-        return false;
-      }
-      Datas[i].useflag = use;
-      Datas[i].typeflag = NIL;
-      nextCell->car = &Datas[i];
-      nextCell->cdr = NULL;
+        from = from->nextp;
+        /* '() is as a atom */
+        if ((i = getData()) == MAXBUF) {
+            return false;
+        }
+        Datas[i].useflag = use;
+        Datas[i].typeflag = NIL;
+        nextCell->car = &Datas[i];
+        nextCell->cdr = NULL;
 
-      return true;
+        return true;
     }
 
     while (from->nextp != NULL) {
         from = from->nextp;
         if (isParlenEnd (from) == true) {
             /* end of S-exp */
+            if ((i = getData ()) == MAXBUF) {
+                return false;
+            }
+            Datas[i].useflag = use;
+            Datas[i].typeflag = NIL;
+            nextCell->car = &Datas[i];
             nextCell->cdr = NULL;
             return true;
         } else if ((isParlenStart (from) == true) && (isParlenEnd (from->nextp) == true)) {
@@ -234,6 +240,7 @@ bool readS (struct token *from, struct Data *to) {
             }
             to = &Datas[i];
             readS (from, to);
+            nextCell->car = to;
         } else {
             /* read Atom */
             if ((i = getData()) == MAXBUF) {
@@ -245,6 +252,12 @@ bool readS (struct token *from, struct Data *to) {
             if (readAtom (from, to) == false) {
                 return false;
             }
+            if ((i = getConsCell ()) == MAXBUF) {
+                return false;
+            }
+            nextCell->cdr = &ConsCells[i];
+            nextCell = &ConsCells[i];
+            nextCell->useflag = use;
         }
     }
     return true;
