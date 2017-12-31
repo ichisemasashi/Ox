@@ -78,8 +78,14 @@ void putCells (struct Data* p) {
     struct Cons *n;
     printf("%d ",p->typeflag);
     n = p->cons;
-    while((n->cdr != NULL) && (n->car->typeflag != NIL) ){
+    while(1){
+        if ((n->cdr == NULL) && (n->car->typeflag == NIL)) {
+            break;
+        }
         /* typeflags */
+        if (n->car->typeflag == CONS) {
+            putCells(n->car);
+        }
         printf("%d ",n->car->typeflag);
         n = n->cdr;
     }
@@ -205,14 +211,13 @@ bool copyString(struct token *from, struct Data *to) {
 }
 struct token * getNextToken(struct token *from) {
     int ps = 1,pe = 0;
-    from = from->nextp;
     while(ps != pe) {
+        from = from->nextp;
         if (isParlenStart(from) == true) {
             ps++;
         } else if (isParlenEnd(from) == true) {
             pe++;
         }
-        from = from->nextp;
     }
     return from;
 }
@@ -262,17 +267,18 @@ bool readS (struct token *from, struct Data *to) {
             return true;
         } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
+            printf ("["); /* dbg */
             readS (from, to);
             nextCell->car = to;
             from = getNextToken(from);
-            printf ("== readS(); new S-exp\n"); /* dbg */
+            printf ("] "); /* dbg */
         } else {
             /* read Atom */
             nextCell->car = to;
             if (readAtom (from, to) == false) {
                 return false;
             }
-            if (isNil(from) == true) {
+            if ((isNil(from) == true) && (isParlenStart(from) == true) ) {
                 from = from->nextp;
             }
             if ((i = getConsCell ()) == MAXBUF) {
@@ -312,7 +318,7 @@ bool myRead () {
             return false;
         }
     }
-    putCells(&Datas[0]); /* dbg */
+    putCells(&Datas[i]); /* dbg */
     return true;
 }
 bool isParlen (struct token* p) {
