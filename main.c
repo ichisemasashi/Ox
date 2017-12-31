@@ -76,6 +76,7 @@ void putToken (struct token *p) {
 }
 void putCells (struct Data* p) {
     struct Cons *n;
+    printf("%d ",p->typeflag);
     n = p->cons;
     while((n->cdr != NULL) && (n->car->typeflag != NIL) ){
         /* typeflags */
@@ -208,72 +209,71 @@ bool readS (struct token *from, struct Data *to) {
     bool result;
     struct Cons *nextCell;
 
-    to->typeflag =CONS;
+    to->typeflag = CONS;
     if ((i = getConsCell()) == MAXBUF) {
         return false;
     }
     to->cons = &ConsCells[i];
     nextCell = &ConsCells[i];
 
-    if (isParlenEnd (from->nextp) == true) {
+    if ((isNil(from) == true) && (from->nextp->nextp == NULL)) {
         from = from->nextp;
         /* '() is as a atom */
-        if ((i = getData()) == MAXBUF) {
+        if ((i= getData()) == MAXBUF) {
             return false;
         }
-        Datas[i].useflag = use;
-        Datas[i].typeflag = NIL;
-        nextCell->car = &Datas[i];
+        to = &Datas[i];
+        to->useflag = use;
+        to->typeflag = NIL;
+        nextCell->car = to;
         nextCell->cdr = NULL;
 
+        printf(">> readS(), isNil root\n"); /* dbg */
         return true;
     }
 
     while (from->nextp != NULL) {
         from = from->nextp;
+        if ((i= getData()) == MAXBUF) {
+            return false;
+        }
+        to = &Datas[i];
+        to->useflag = use;
         if (isParlenEnd (from) == true) {
             /* end of S-exp */
             if ((i = getData ()) == MAXBUF) {
                 return false;
             }
-            Datas[i].useflag = use;
-            Datas[i].typeflag = NIL;
-            nextCell->car = &Datas[i];
+            to->typeflag = NIL;
+            nextCell->car = to;
             nextCell->cdr = NULL;
             return true;
-        } else if ((isParlenStart (from) == true) && (isParlenEnd (from->nextp) == true)) {
+        } /* else if (isNil(from) == true) { */
             /* '() is as a atom */
-            if ((i = getData ()) ==MAXBUF) {
-                return false;
-            }
-            Datas[i].useflag = use;
-            Datas[i].typeflag = NIL;
-            nextCell->car = &Datas[i];
+/*            to->typeflag = NIL;
+            nextCell->car = to;
             if ((i = getConsCell ()) == MAXBUF) {
                 return false;
             }
             nextCell->cdr = &ConsCells[i];
             nextCell = &ConsCells[i];
             nextCell->useflag = use;
+            from = from->nextp;
+            printf(">> readS(); end of '().\n");  dbg */
 
-        } else if (isParlenStart (from) == true) {
+        else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
-            if ((i = getData ()) == MAXBUF) {
-                return false;
-            }
-            to = &Datas[i];
             readS (from, to);
             nextCell->car = to;
+            printf ("== readS(); new S-exp\n"); /* dbg */
         } else {
             /* read Atom */
-            if ((i = getData()) == MAXBUF) {
-                return false;
-            }
-            to = &Datas[i];
-            to->useflag = use;
-            nextCell->car = &Datas[i];
+            nextCell->car = to;
             if (readAtom (from, to) == false) {
                 return false;
+            }
+            if (isNil(from) == true) {
+                from = from->nextp;
             }
             if ((i = getConsCell ()) == MAXBUF) {
                 return false;
@@ -350,7 +350,7 @@ bool isNil (struct token *p) {
         }
     }else if ((p->size == 1)&&(p->nextp->size == 1) &&
               (isParlenStart(p) == true) &&
-              (isParlenEnd(p->nextp))) {
+              (isParlenEnd(p->nextp) == true)) {
         return true;
     }
     return false;
