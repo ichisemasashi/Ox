@@ -59,7 +59,7 @@ float toFloat(int *, int);
 int toInt(struct token *);
 int getConsCell();
 
-void putToken() {
+void putTokens() {
     int i,j;
     for (i=0;tokens[i].nextp!=NULL;i++) {
         for (j=0;j<tokens[i].size;j++) {
@@ -68,6 +68,23 @@ void putToken() {
         putc('\n',stdout);
     }
 }
+void putToken (struct token *p) {
+    int i;
+    for (i = 0;i<p->size;i++) {
+        putc(p->tokenp[i],stdout);
+    }
+}
+void putCells (struct Data* p) {
+    struct Cons *n;
+    n = p->cons;
+    while((n->cdr != NULL) && (n->car->typeflag != NIL) ){
+        /* typeflags */
+        printf("%d ",n->car->typeflag);
+        n = n->cdr;
+    }
+    printf ("\n");
+}
+
 int getBuf (int s[], int limit) {
     int c,i,p;
     for (i=0,p=0;(i<limit) && ((c=getchar())!=EOF) ;i++) {
@@ -140,24 +157,30 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
 }
 bool readAtom (struct token* in, struct Data *data) {
     bool result;
+    putToken(in);
     if (isNil(in) == true) {
         data->typeflag = NIL;
+        printf (" NIL, "); /* dbg */
     } else if (isNumber(in) == true) {
         if (isFloat (in) == true) {
             data->typeflag = FLOAT;
+            printf (" FLOAT, "); /* dbg */
             data->float_data = toFloat(in->tokenp,in->size);
         } else { /* Int */
             data->typeflag = INT;
+            printf (" INT, "); /* dbg */
             data->int_data = toInt(in);
         }
     } else if (isString(in) == true) {
         data->typeflag = STRING;
+        printf (" STRING, "); /* dbg */
         result = copyString(in,data);
         if (result == false) {
             return false;
         }
     } else { /* Symbol */
         data->typeflag = SYMBOL;
+        printf (" SYMBOL, "); /* dbg */
         result = copyString (in, data);
         if (result == false) {
           return false;
@@ -280,7 +303,7 @@ bool myRead () {
     Datas[i].useflag = use;
     /* S式ならreadS */
     /* S式でないならreadAtom */
-    if (isParlen(&tokens[0]) == true) {
+    if (isParlenStart(&tokens[0]) == true) {
         if (readS(&tokens[0], &Datas[i]) == false) {
             return false;
         }
@@ -289,7 +312,7 @@ bool myRead () {
             return false;
         }
     }
-
+    putCells(&Datas[0]); /* dbg */
     return true;
 }
 bool isParlen (struct token* p) {
@@ -325,20 +348,56 @@ bool isNil (struct token *p) {
            ((p->tokenp[2] == 'l') || (p->tokenp[2] == 'L')) ) {
            return true;
         }
+    }else if ((p->size == 1)&&(p->nextp->size == 1) &&
+              (isParlenStart(p) == true) &&
+              (isParlenEnd(p->nextp))) {
+        return true;
     }
     return false;
 }
-bool isNumber (struct token* x) {
-    int i;
-    for (i = 0;i < x->size;i++) {
-        if (('0' <= x->tokenp[i]) && (x->tokenp[i] <= '9')) { /* number */
-        } else if ((x->tokenp[i] == '+') || (x->tokenp[i] == '-')) { /* +- */
-        } else if (x->tokenp[i] == '.') { /* . */
+bool isDigit (struct token* x, int j) {
+    int i,c,size= x->size;
+    bool result = false;
+    for (i = j;i < size;i++) {
+        c = x->tokenp[i];
+        if (('0' <= c) && (c <= '9')) { /* number */
+        } else if (c == '.') { /* . */
         } else {
-            return false;
+            break;
         }
     }
-    return true;
+    if (size <= i) {
+        result = true;
+    }
+    return result;
+}
+bool isNumber (struct token* x) {
+    int i;
+    bool result = false;
+
+    if (x->size == 2) {
+        if (((x->tokenp[0] == '+') || (x->tokenp[0] == '-')) &&
+            (('0' <= x->tokenp[1]) && (x->tokenp[1] <= '9'))) {
+            /* start from +/- */
+            result = true;
+        } else {
+            /* start from 0-9 */
+            result = isDigit(x, 0);
+        }
+    } else if (2 < x->size) {
+        if ((x->tokenp[0] == '+') || (x->tokenp[0] == '-') ) {
+            if (('0' <= x->tokenp[1]) && (x->tokenp[1] <= '9')) {
+                result = isDigit(x, 2);
+            }
+        } else {
+            /* start from 0-9 */
+            result = isDigit(x, 0);
+        }
+    } else {
+        /* start from 0-9 */
+        result = isDigit(x, 0);
+    }
+    return result;
 }
 bool isFloat (struct token* x) {
     int i;
