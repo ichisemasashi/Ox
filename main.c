@@ -203,7 +203,19 @@ bool copyString(struct token *from, struct Data *to) {
 
     return true;
 }
-
+struct token * getNextToken(struct token *from) {
+    int ps = 1,pe = 0;
+    from = from->nextp;
+    while(ps != pe) {
+        if (isParlenStart(from) == true) {
+            ps++;
+        } else if (isParlenEnd(from) == true) {
+            pe++;
+        }
+        from = from->nextp;
+    }
+    return from;
+}
 bool readS (struct token *from, struct Data *to) {
     int i;
     bool result;
@@ -248,23 +260,11 @@ bool readS (struct token *from, struct Data *to) {
             nextCell->car = to;
             nextCell->cdr = NULL;
             return true;
-        } /* else if (isNil(from) == true) { */
-            /* '() is as a atom */
-/*            to->typeflag = NIL;
-            nextCell->car = to;
-            if ((i = getConsCell ()) == MAXBUF) {
-                return false;
-            }
-            nextCell->cdr = &ConsCells[i];
-            nextCell = &ConsCells[i];
-            nextCell->useflag = use;
-            from = from->nextp;
-            printf(">> readS(); end of '().\n");  dbg */
-
-        else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
+        } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
             readS (from, to);
             nextCell->car = to;
+            from = getNextToken(from);
             printf ("== readS(); new S-exp\n"); /* dbg */
         } else {
             /* read Atom */
