@@ -245,7 +245,6 @@ bool readS (struct token *from, struct Data *to) {
         nextCell->car = to;
         nextCell->cdr = NULL;
 
-        printf(">> readS(), isNil root\n"); /* dbg */
         return true;
     }
 
@@ -268,8 +267,9 @@ bool readS (struct token *from, struct Data *to) {
         } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
             printf ("["); /* dbg */
-            readS (from, to);
+            to->typeflag = CONS;
             nextCell->car = to;
+            readS (from, to);
             from = getNextToken(from);
             printf ("] "); /* dbg */
         } else {
@@ -528,20 +528,20 @@ void initCells() {
     index_of_Datas = 0;
 }
 int getConsCell () {
-  int i,loop;
-  for (loop = 0,i=index_of_Consceslls;i<MAXBUF;i++) {
-    if (ConsCells[i].useflag == not_use) {
-      break;
-    }
-    if ((loop == 0) && (i == (MAXBUF - 1))) {
-      loop++;
-      i = 0;
-      continue;
-    }
+    int i,loop;
+    for (loop = 0,i=index_of_Consceslls;i<MAXBUF;i++) {
+        if (ConsCells[i].useflag == not_use) {
+            break;
+        }
+        if ((loop == 0) && (i == (MAXBUF - 1))) {
+            loop++;
+            i = 0;
+            continue;
+        }
 
-  }
-  index_of_Consceslls = i;
-  return i;
+    }
+    index_of_Consceslls = i;
+    return i;
 }
 int getData () {
     int i,loop;
