@@ -94,7 +94,7 @@ void putCells (struct Data* p) {
         printf ("\n");
     } else {
         /* one word */
-        printf("%d ",p->typeflag);
+        printf("%d\n",p->typeflag);
     }
 }
 
