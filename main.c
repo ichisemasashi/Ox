@@ -76,20 +76,25 @@ void putToken (struct token *p) {
 }
 void putCells (struct Data* p) {
     struct Cons *n;
-    printf("%d ",p->typeflag);
-    n = p->cons;
-    while(1){
-        if ((n->cdr == NULL) && (n->car->typeflag == NIL)) {
-            break;
+    if (p->typeflag == CONS) {
+        printf("%d ",p->typeflag);
+        n = p->cons;
+        while(1){
+            if ((n->cdr == NULL) && (n->car->typeflag == NIL)) {
+                break;
+            }
+            /* typeflags */
+            if (n->car->typeflag == CONS) {
+                putCells(n->car);
+            }
+            printf("%d ",n->car->typeflag);
+            n = n->cdr;
         }
-        /* typeflags */
-        if (n->car->typeflag == CONS) {
-            putCells(n->car);
-        }
-        printf("%d ",n->car->typeflag);
-        n = n->cdr;
+        printf ("\n");
+    } else {
+        /* one word */
+        printf("%d ",p->typeflag);
     }
-    printf ("\n");
 }
 
 int getBuf (int s[], int limit) {
@@ -305,7 +310,7 @@ bool myRead () {
     if (i > MAXTOKEN) {
         return false;
     }
-    putTokens(); /* dbg */
+    /* putTokens();  dbg */
     i = getData();
     if (i == MAXBUF) {
       return false;
@@ -321,7 +326,7 @@ bool myRead () {
             return false;
         }
     }
-    /* putCells(&Datas[i]);  dbg */
+    putCells(&Datas[i]); /* dbg */
     return true;
 }
 bool isParlen (struct token* p) {
