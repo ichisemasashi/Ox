@@ -113,7 +113,7 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
     int c,i,o,t;
     enum mode {IN,OUT};
     enum mode m;
-    for (i=0,o=0,t=0;(i<limit_in) && (o<limit_out) && (in[i]!='\0');i++,t++) {
+    for (i=0,o=0,t=0,m=OUT;(i<limit_in) && (o<limit_out) && (in[i]!='\0');i++,t++) {
         c = in[i];
         if (c==' ' || c == '\n' || c == '\t' || c == '\v' || c == '\f' || c == '\r') {
            /* white space */
@@ -159,6 +159,10 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
     }
     if (in[i] == '\0') {
         out[o].nextp = NULL;
+    }
+    if (m == IN) {
+        /* one word */
+        out[o].size = t;
     }
     return o;
 }
@@ -269,7 +273,6 @@ bool readS (struct token *from, struct Data *to) {
         } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
             printf ("["); /* dbg */
-            to->typeflag = CONS;
             readS (from, to);
             from = getNextToken(from);
             printf ("] "); /* dbg */
@@ -302,6 +305,7 @@ bool myRead () {
     if (i > MAXTOKEN) {
         return false;
     }
+    putTokens(); /* dbg */
     i = getData();
     if (i == MAXBUF) {
       return false;
@@ -317,7 +321,7 @@ bool myRead () {
             return false;
         }
     }
-    putCells(&Datas[i]); /* dbg */
+    /* putCells(&Datas[i]);  dbg */
     return true;
 }
 bool isParlen (struct token* p) {
@@ -353,8 +357,9 @@ bool isNil (struct token *p) {
            ((p->tokenp[2] == 'l') || (p->tokenp[2] == 'L')) ) {
            return true;
         }
-    }else if ((p->size == 1)&&(p->nextp->size == 1) &&
+    }else if ((p->size == 1)&&
               (isParlenStart(p) == true) &&
+              (p->nextp->size == 1) &&
               (isParlenEnd(p->nextp) == true)) {
         return true;
     }
