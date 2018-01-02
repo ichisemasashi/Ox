@@ -86,8 +86,9 @@ void putCells (struct Data* p) {
             /* typeflags */
             if (n->car->typeflag == CONS) {
                 putCells(n->car);
+            } else {
+                printf("%d ",n->car->typeflag);
             }
-            printf("%d ",n->car->typeflag);
             n = n->cdr;
         }
         printf ("\n");
@@ -245,21 +246,6 @@ bool readS (struct token *from, struct Data *to) {
     nextCell = &ConsCells[i];
     to->cons = nextCell;
 
-/*    if ((isNil(from) == true) && (from->nextp->nextp == NULL)) {
-        from = from->nextp;
-         '() is as a atom 
-        if ((i= getData()) == MAXBUF) {
-            return false;
-        }
-        to = &Datas[i];
-        to->typeflag = NIL;
-        nextCell->car = to;
-        nextCell->cdr = NULL;
-
-        return true;
-    }
-*/
-
     while (from->nextp != NULL) {
         from = from->nextp;
         if ((i= getData()) == MAXBUF) {
@@ -282,6 +268,11 @@ bool readS (struct token *from, struct Data *to) {
             readS (from, to);
             from = getNextToken(from);
             printf ("] "); /* dbg */
+            if ((i = getConsCell ()) == MAXBUF) {
+                return false;
+            }
+            nextCell->cdr = &ConsCells[i];
+            nextCell = &ConsCells[i];
         } else {
             /* read Atom */
             if (readAtom (from, to) == false) {
