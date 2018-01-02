@@ -243,7 +243,6 @@ bool readS (struct token *from, struct Data *to) {
             return false;
         }
         to = &Datas[i];
-        to->useflag = use;
         to->typeflag = NIL;
         nextCell->car = to;
         nextCell->cdr = NULL;
@@ -257,7 +256,6 @@ bool readS (struct token *from, struct Data *to) {
             return false;
         }
         to = &Datas[i];
-        to->useflag = use;
         nextCell->car = to;
 
         if (isParlenEnd (from) == true) {
@@ -277,14 +275,6 @@ bool readS (struct token *from, struct Data *to) {
             printf ("] "); /* dbg */
         } else {
             /* read Atom */
-            if ((i = getConsCell ()) == MAXBUF) {
-                return false;
-            }
-            nextCell->cdr = &ConsCells[i];
-            nextCell = &ConsCells[i];
-            nextCell->useflag = use;
-            nextCell->car = to;
-
             if (readAtom (from, to) == false) {
                 return false;
             }
@@ -292,6 +282,11 @@ bool readS (struct token *from, struct Data *to) {
                 /* from = '(', from->nextp = ')' */
                 from = from->nextp;
             }
+            if ((i = getConsCell ()) == MAXBUF) {
+                return false;
+            }
+            nextCell->cdr = &ConsCells[i];
+            nextCell = &ConsCells[i];
         }
     }
     return true;
@@ -311,7 +306,6 @@ bool myRead () {
     if (i == MAXBUF) {
       return false;
     }
-    Datas[i].useflag = use;
     /* S式ならreadS */
     /* S式でないならreadAtom */
     if (isParlenStart(&tokens[0]) == true) {
@@ -551,6 +545,9 @@ int getConsCell () {
 
     }
     index_of_Consceslls = i;
+    if (i != MAXBUF) {
+        ConsCells[i].useflag = use;
+    }
     return i;
 }
 int getData () {
@@ -566,6 +563,9 @@ int getData () {
         }
     }
     index_of_Datas = i;
+    if (i != MAXBUF) {
+        Datas[i].useflag = use;
+    }
     return i;
 }
 
