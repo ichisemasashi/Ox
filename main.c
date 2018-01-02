@@ -173,6 +173,9 @@ bool readAtom (struct token* in, struct Data *data) {
             data->typeflag = FLOAT;
             printf (" FLOAT, "); /* dbg */
             data->float_data = toFloat(in->tokenp,in->size);
+            if ((result = copyString(in,data)) == false) {
+                return false;
+            }
         } else { /* Int */
             data->typeflag = INT;
             printf (" INT, "); /* dbg */
@@ -230,8 +233,8 @@ bool readS (struct token *from, struct Data *to) {
     if ((i = getConsCell()) == MAXBUF) {
         return false;
     }
-    to->cons = &ConsCells[i];
     nextCell = &ConsCells[i];
+    to->cons = nextCell;
 
     if ((isNil(from) == true) && (from->nextp->nextp == NULL)) {
         from = from->nextp;
@@ -255,38 +258,40 @@ bool readS (struct token *from, struct Data *to) {
         }
         to = &Datas[i];
         to->useflag = use;
+        nextCell->car = to;
+
         if (isParlenEnd (from) == true) {
             /* end of S-exp */
             if ((i = getData ()) == MAXBUF) {
                 return false;
             }
             to->typeflag = NIL;
-            nextCell->car = to;
             nextCell->cdr = NULL;
             return true;
         } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
             printf ("["); /* dbg */
             to->typeflag = CONS;
-            nextCell->car = to;
             readS (from, to);
             from = getNextToken(from);
             printf ("] "); /* dbg */
         } else {
             /* read Atom */
-            nextCell->car = to;
-            if (readAtom (from, to) == false) {
-                return false;
-            }
-            if ((isNil(from) == true) && (isParlenStart(from) == true) ) {
-                from = from->nextp;
-            }
             if ((i = getConsCell ()) == MAXBUF) {
                 return false;
             }
             nextCell->cdr = &ConsCells[i];
             nextCell = &ConsCells[i];
             nextCell->useflag = use;
+            nextCell->car = to;
+
+            if (readAtom (from, to) == false) {
+                return false;
+            }
+            if ((isNil(from) == true) && (isParlenStart(from) == true) ) {
+                /* from = '(', from->nextp = ')' */
+                from = from->nextp;
+            }
         }
     }
     return true;
@@ -481,10 +486,12 @@ int toInt(struct token *p) {
 float toFloat(int *p, int size) {
     float ret,dec;
     int i,c,n = 0;
-    for (i = 0,ret = 1;i < size;i++) {
+    bool pm = false; /* plus-minus */
+
+    for (i = 0,ret = 0;i < size;i++) {
         c = p[i];
         if (c == '-') { /* +- */
-            ret = ret * -1;
+            pm = true;
         } else if (c == '.') { /* . */
             n = 1;
         } else if ('0' <= c && c <= '9') { /* 0~9 */
@@ -495,7 +502,10 @@ float toFloat(int *p, int size) {
         }
     }
     if (n > 0) {
-        ret = ret * myPow (n);
+        ret = ret * myPow (n - 1);
+    }
+    if (pm == true) {
+        ret = ret * -1;
     }
     return ret;
 }
