@@ -245,9 +245,9 @@ bool readS (struct token *from, struct Data *to) {
     nextCell = &ConsCells[i];
     to->cons = nextCell;
 
-    if ((isNil(from) == true) && (from->nextp->nextp == NULL)) {
+/*    if ((isNil(from) == true) && (from->nextp->nextp == NULL)) {
         from = from->nextp;
-        /* '() is as a atom */
+         '() is as a atom 
         if ((i= getData()) == MAXBUF) {
             return false;
         }
@@ -258,6 +258,7 @@ bool readS (struct token *from, struct Data *to) {
 
         return true;
     }
+*/
 
     while (from->nextp != NULL) {
         from = from->nextp;
@@ -317,7 +318,8 @@ bool myRead () {
     }
     /* S式ならreadS */
     /* S式でないならreadAtom */
-    if (isParlenStart(&tokens[0]) == true) {
+    if ((isParlenStart(&tokens[0]) == true) &&
+        (isParlenEnd(&tokens[1]) == false)) {  /* '() is as Atom */
         if (readS(&tokens[0], &Datas[i]) == false) {
             return false;
         }
