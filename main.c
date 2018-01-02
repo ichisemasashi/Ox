@@ -99,15 +99,25 @@ void putCells (struct Data* p) {
 }
 
 int getBuf (int s[], int limit) {
-    int c,i,p;
-    for (i=0,p=0;(i<limit) && ((c=getchar())!=EOF) ;i++) {
+    int c,i,ps,pe;
+    for (i=0,ps=0,pe=0;(i<limit) && ((c=getchar())!=EOF) ;i++) {
         s[i] = c;
         if (c == '(') { /* ( */
-            p++;
+            if ((pe < ps) || (ps == 0 && ps == pe)) {
+                ps++;
+            } else {
+                i = limit;
+                break;
+            }
         } else if (c == ')') { /* ) */
-            p--;
+            if ((pe < ps) || (pe == 0 && pe == ps)) {
+                pe++;
+            } else {
+                i = limit;
+                break;
+            }
         } else if (c == '\n') {
-            if (p == 0) {
+            if (ps == pe) {
                 break;
             }
         }
@@ -295,11 +305,11 @@ bool readS (struct token *from, struct Data *to) {
 bool myRead () {
     int i;
     i = getBuf (buf,MAXBUF);
-    if (i > MAXBUF) {
+    if (i >= MAXBUF) {
         return false;
     }
     i = tokenize (buf, MAXBUF, tokens, MAXTOKEN);
-    if (i > MAXTOKEN) {
+    if (i >= MAXTOKEN) {
         return false;
     }
     /* putTokens();  dbg */
