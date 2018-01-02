@@ -44,6 +44,7 @@ struct Cons ConsCells[MAXBUF];
 struct Data Datas[MAXBUF];
 int index_of_Consceslls;
 int index_of_Datas;
+int index_of_Read_Datas;
 
 /* prot type */
 bool isNumber(struct token*);
@@ -184,33 +185,33 @@ int tokenize (int in[], int limit_in, struct token out[], int limit_out) {
 }
 bool readAtom (struct token* in, struct Data *data) {
     bool result;
-    putToken(in);
+    /* putToken(in); dbg */
     if (isNil(in) == true) {
         data->typeflag = NIL;
-        printf (" NIL, "); /* dbg */
+        /* printf (" NIL, ");  dbg */
     } else if (isNumber(in) == true) {
         if (isFloat (in) == true) {
             data->typeflag = FLOAT;
-            printf (" FLOAT, "); /* dbg */
+            /* printf (" FLOAT, ");  dbg */
             data->float_data = toFloat(in->tokenp,in->size);
             if ((result = copyString(in,data)) == false) {
                 return false;
             }
         } else { /* Int */
             data->typeflag = INT;
-            printf (" INT, "); /* dbg */
+            /* printf (" INT, ");  dbg */
             data->int_data = toInt(in);
         }
     } else if (isString(in) == true) {
         data->typeflag = STRING;
-        printf (" STRING, "); /* dbg */
+        /* printf (" STRING, ");  dbg */
         result = copyString(in,data);
         if (result == false) {
             return false;
         }
     } else { /* Symbol */
         data->typeflag = SYMBOL;
-        printf (" SYMBOL, "); /* dbg */
+        /* printf (" SYMBOL, ");  dbg */
         result = copyString (in, data);
         if (result == false) {
           return false;
@@ -274,10 +275,10 @@ bool readS (struct token *from, struct Data *to) {
             return true;
         } else if ((isParlenStart (from) == true) && (isNil(from) == false)) {
             /* start of S-exp */
-            printf ("["); /* dbg */
+            /* printf ("[");  dbg */
             readS (from, to);
             from = getNextToken(from);
-            printf ("] "); /* dbg */
+            /* printf ("] ");  dbg */
             if ((i = getConsCell ()) == MAXBUF) {
                 return false;
             }
@@ -329,7 +330,9 @@ bool myRead () {
             return false;
         }
     }
-    putCells(&Datas[i]); /* dbg */
+    /* putCells(&Datas[i]);  dbg */
+    index_of_Read_Datas = i;
+
     return true;
 }
 bool isParlen (struct token* p) {
@@ -605,7 +608,9 @@ float Eval () {
     /* (proc exp*) */
 }
 void myEval () {
+    /* index_of_Read_Datas */
 }
+
 void myPrint () {
 }
 int main () {
@@ -614,7 +619,7 @@ int main () {
     initCells();
 
     while (1) {
-        printf ("Lispy >");
+        printf ("Lispy > ");
         ret = myRead();
         if (ret != true) {
             printf("ERROR!!!!\n");
