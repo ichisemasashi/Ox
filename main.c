@@ -474,8 +474,8 @@ float myPow (int x) {
 }
 int toInt(struct token *p) {
     int result, i;
-    for(i=0;i<p->size;i++) {
-        result = p->tokenp[i] - '0';
+    for(i=0,result=0;i<p->size;i++) {
+        result = result + p->tokenp[i] - '0';
         if (i < p->size - 1) {
             result = result * 10;
         }
