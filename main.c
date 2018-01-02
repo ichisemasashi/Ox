@@ -607,8 +607,46 @@ float Eval () {
     /* (begin exp*) */
     /* (proc exp*) */
 }
-void myEval () {
+bool evalSymbol (struct Data *d) {
+    bool ret = true;
+    /* of define */
+    /* in function */
+    /* special form */
+    return ret;
+}
+bool evalS (struct Data *d) {
+    bool ret = true;
+    return ret;
+}
+bool evalAtom (struct Data *d) {
+    bool ret = true;
+    enum typeflag f = d->typeflag;
+    if (f == CONS) {
+        ret = false;
+    } else if (f == SYMBOL) {
+        ret = evalSymbol (d);
+    } else {
+        /* INT, FLOAT, STRING, NIL */
+    }
+    return ret;
+}
+bool myEval () {
     /* index_of_Read_Datas */
+    bool ret = true;
+    struct Data *d = &Datas[index_of_Read_Datas];
+
+    if (d->typeflag == CONS) {
+        ret = evalS(d);
+        if (ret == false) {
+            return false;
+        }
+    } else {
+        ret = evalAtom(d);
+        if (ret == false) {
+            return false;
+        }
+    }
+    return ret;
 }
 
 void myPrint () {
@@ -622,10 +660,14 @@ int main () {
         printf ("Lispy > ");
         ret = myRead();
         if (ret != true) {
-            printf("ERROR!!!!\n");
+            printf("READ ERROR!!!!\n");
             break;
         }
-        myEval();
+        ret = myEval();
+        if (ret != true) {
+            printf("EVAL ERROR!!!!\n");
+            break;
+        }
         myPrint();
     }
     return 0;
