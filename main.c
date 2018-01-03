@@ -64,6 +64,11 @@ bool BI_Plus(struct Data*);
 bool compString (char *, char *);
 bool evalS (struct Data *);
 bool evalAtom (struct Data *);
+bool BI_define (struct Data *);
+bool BI_lambda (struct Data *);
+bool BI_if (struct Data *);
+bool BI_loop (struct Data *);
+bool BI_load (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -653,6 +658,36 @@ bool (*findFunction (struct Data *d))(struct Data *) {
     }
     return NULL;
 }
+bool spForm (struct Data *d) {
+    bool ret = true;
+    char *car = d->cons->car->char_data;
+
+    if (((ret = compString (car, "define")) == true) ||
+        ((ret = compString (car, "DEFINE")) == true)) {
+        /* define */
+        ret = BI_define (d);
+    } else if (((ret = compString (car, "lambda")) == true) ||
+               ((ret = compString (car, "LAMBDA")) == true)) {
+        /* lambda */
+        ret = BI_lambda (d);
+    } else if (((ret = compString (car, "quote")) == true) ||
+               ((ret = compString (car, "QUOTE")) == true)) {
+        /* quote */
+    } else if (((ret = compString (car, "if")) == true) ||
+               ((ret = compString (car, "IF")) == true)) {
+        /* if */
+        ret = BI_if (d);
+    } else if (((ret = compString (car, "loop")) == true) ||
+               ((ret = compString (car, "LOOP")) == true)) {
+        /* loop */
+        ret = BI_loop (d);
+    } else if (((ret = compString (car, "load")) == true) ||
+               ((ret = compString (car, "LOAD")) == true)) {
+        /* load */
+        ret = BI_load (d);
+    }
+    return ret;
+}
 bool apply (struct Data *d) {
     bool (*func)(struct Data *);
     bool ret = true;
@@ -663,6 +698,7 @@ bool apply (struct Data *d) {
         ret = func (d);
     } else {
         /* Special Form */
+        ret = spForm(d);
     }
     return ret;
 }
@@ -813,4 +849,13 @@ bool BI_Plus (struct Data *d) {
     }
     return ret;
 }
-
+bool BI_define (struct Data *d) {
+}
+bool BI_lambda (struct Data *d) {
+}
+bool BI_if (struct Data *d) {
+}
+bool BI_loop (struct Data *d) {
+}
+bool BI_load (struct Data *d) {
+}
