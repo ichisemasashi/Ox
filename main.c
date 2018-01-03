@@ -43,6 +43,8 @@ struct Cons {
 
 struct Cons ConsCells[MAXBUF];
 struct Data Datas[MAXBUF];
+struct Data *DefinePool;
+
 int index_of_Consceslls;
 int index_of_Datas;
 int index_of_Read_Datas;
@@ -563,6 +565,7 @@ void initCells() {
     }
     index_of_Consceslls = 0;
     index_of_Datas = 0;
+    DefinePool = NULL;
 }
 int getConsCell () {
     int i,loop;
@@ -583,7 +586,7 @@ int getConsCell () {
     }
     return i;
 }
-void freeConsCells (struct Cons *c) {
+void freeConsCell (struct Cons *c) {
     c->useflag = not_use;
 }
 void freeData (struct Data *d) {
@@ -635,13 +638,17 @@ bool compString (char *a, char *b) {
     int size,i;
     bool ret = false;
     if ((size = sizeof(a)) == sizeof(b)) {
-        for(i=0;i<size;i++) {
+        if (size == 0) {
+            return true;
+        }
+        for(i=0;(i<size) && ((a[i] != '\0') || (b[i] != '\0'));i++) {
             if (a[i] != b[i]) {
                 break;
             }
         }
     }
-    if (i == size) {
+    if ((i == size) ||
+        ((a[i] == b[i]) && a[i] == '\0')) {
         ret = true;
     }
     return ret;
@@ -650,7 +657,7 @@ bool (*findFunction (struct Data *d))(struct Data *) {
     int i = 0;
     bool ret;
     char * func = d->char_data;
-    while((ret = compString (BIfunc[i].name, "")) == false) {
+    while(BIfunc[i].func != NULL) {
         if ((ret = compString(BIfunc[i].name, func)) == true) {
             return BIfunc[i].func;
         }
@@ -821,13 +828,13 @@ bool BI_Plus (struct Data *d) {
             freeData(args->car);
             c = args;
             args = args->cdr;
-            freeConsCells (c);
+            freeConsCell (c);
         }
         if ((args->cdr != NULL) && (args->cdr->useflag == use)) {
             freeData(args->car);
-            freeConsCells(args);
+            freeConsCell(args);
         }
-        freeConsCells(d->cons);
+        freeConsCell(d->cons);
         d->typeflag = FLOAT;
         d->float_data = ret_float;
     } else {
@@ -837,25 +844,49 @@ bool BI_Plus (struct Data *d) {
             freeData (args->car);
             c = args;
             args = args->cdr;
-            freeConsCells (c);
+            freeConsCell (c);
         }
         if ((args->cdr != NULL) && (args->cdr->useflag == use)) {
             freeData(args->car);
-            freeConsCells(args);
+            freeConsCell(args);
         }
-        freeConsCells(d->cons);
+        freeConsCell(d->cons);
         d->typeflag = INT;
         d->int_data = ret_int;
     }
     return ret;
 }
 bool BI_define (struct Data *d) {
+    int i;
+    bool ret = true;
+    /* DefinePool */
+    if (DefinePool == NULL) {
+        if ((i = getData ()) == MAXBUF) {
+            ret = false;
+        }
+        DefinePool = & Datas[i];
+        DefinePool->typeflag = CONS;
+    } else {
+        d->cons->cdr->cdr->cdr = DefinePool->cons;
+    }
+    DefinePool->cons = d->cons->cdr;
+    freeData (d->cons->car);
+    freeConsCell (d->cons);
+    d->typeflag = DefinePool->cons->car->typeflag;
+    for (i=0;i<MAXSTRINGS;i++) {
+        d->char_data[i] = DefinePool->cons->car->char_data[i];
+    }
+    return ret;
 }
 bool BI_lambda (struct Data *d) {
+    return true;
 }
 bool BI_if (struct Data *d) {
+    return true;
 }
 bool BI_loop (struct Data *d) {
+    return true;
 }
 bool BI_load (struct Data *d) {
+    return true;
 }
