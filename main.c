@@ -40,6 +40,7 @@ struct Cons {
     enum useflag useflag;
 };
 
+
 struct Cons ConsCells[MAXBUF];
 struct Data Datas[MAXBUF];
 int index_of_Consceslls;
@@ -59,7 +60,18 @@ bool isNil (struct token*);
 float toFloat(int *, int);
 int toInt(struct token *);
 int getConsCell();
+bool BI_Plus(struct Data*);
+bool compString (char *, char *);
+bool evalS (struct Data *);
+bool evalAtom (struct Data *);
 
+struct functionName{
+    char name[MAXSTRINGS];
+    bool (*func)(struct Data*);
+} BIfunc[] = {
+    "+", BI_Plus,
+    "",NULL /* terminator */
+};
 void putTokens() {
     int i,j;
     for (i=0;tokens[i].nextp!=NULL;i++) {
@@ -566,6 +578,13 @@ int getConsCell () {
     }
     return i;
 }
+void freeConsCells (struct Cons *c) {
+    c->useflag = not_use;
+}
+void freeData (struct Data *d) {
+    d->useflag = not_use;
+}
+
 int getData () {
     int i,loop;
     for (loop = 0,i = index_of_Datas;i< MAXBUF; i++) {
@@ -607,6 +626,66 @@ float Eval () {
     /* (begin exp*) */
     /* (proc exp*) */
 }
+bool compString (char *a, char *b) {
+    int size,i;
+    bool ret = false;
+    if ((size = sizeof(a)) == sizeof(b)) {
+        for(i=0;i<size;i++) {
+            if (a[i] != b[i]) {
+                break;
+            }
+        }
+    }
+    if (i == size) {
+        ret = true;
+    }
+    return ret;
+}
+bool (*findFunction (struct Data *d))(struct Data *) {
+    int i = 0;
+    bool ret;
+    char * func = d->char_data;
+    while((ret = compString (BIfunc[i].name, "")) == false) {
+        if ((ret = compString(BIfunc[i].name, func)) == true) {
+            return BIfunc[i].func;
+        }
+        i++;
+    }
+    return NULL;
+}
+bool apply (struct Data *d) {
+    bool (*func)(struct Data *);
+    bool ret = true;
+    if (d->cons->car->typeflag != SYMBOL) {
+        printf ("Can't apply this CAR.\n");
+        ret = false;
+    } else if ((func = findFunction(d->cons->car)) != NULL) {
+        ret = func (d);
+    } else {
+        /* Special Form */
+    }
+    return ret;
+}
+
+bool evalEach (struct Data *d) {
+    bool ret = true;;
+    struct Cons *cons = d->cons;
+    while (cons->cdr!=NULL) {
+        if (cons->car->typeflag == CONS) {
+            ret = evalS (cons->car);
+            if (ret == false) {
+                break;
+            }
+        } else {
+            ret = evalAtom (cons->car);
+            if (ret == false) {
+                break;
+            }
+        }
+        cons = cons->cdr;
+    }
+    return ret;
+}
 bool evalSymbol (struct Data *d) {
     bool ret = true;
     /* of define */
@@ -616,6 +695,14 @@ bool evalSymbol (struct Data *d) {
 }
 bool evalS (struct Data *d) {
     bool ret = true;
+    ret = evalEach (d);
+    if (ret == false) {
+        return ret;
+    }
+    ret = apply (d);
+    if (ret == false) {
+        return ret;
+    }
     return ret;
 }
 bool evalAtom (struct Data *d) {
@@ -672,3 +759,58 @@ int main () {
     }
     return 0;
 }
+
+
+/* Build-in Functions */
+bool BI_Plus (struct Data *d) {
+    bool ret = true,isfloat = false;
+    int ret_int;
+    float ret_float;
+    struct Cons *args = d->cons->cdr, *c;
+
+    /* all INT or not*/
+    while (args->cdr != NULL) {
+        if (args->car->typeflag == FLOAT) {
+            isfloat = true;
+            break;
+        }
+        args = args->cdr;
+    }
+
+    args = d->cons->cdr;
+    if (isfloat == true) {
+        ret_float = 0;
+        while (args->cdr != NULL) {
+            ret_float += args->car->float_data;
+            freeData(args->car);
+            c = args;
+            args = args->cdr;
+            freeConsCells (c);
+        }
+        if ((args->cdr != NULL) && (args->cdr->useflag == use)) {
+            freeData(args->car);
+            freeConsCells(args);
+        }
+        freeConsCells(d->cons);
+        d->typeflag = FLOAT;
+        d->float_data = ret_float;
+    } else {
+        ret_int = 0;
+        while (args->cdr != NULL) {
+            ret_int += args->car->int_data;
+            freeData (args->car);
+            c = args;
+            args = args->cdr;
+            freeConsCells (c);
+        }
+        if ((args->cdr != NULL) && (args->cdr->useflag == use)) {
+            freeData(args->car);
+            freeConsCells(args);
+        }
+        freeConsCells(d->cons);
+        d->typeflag = INT;
+        d->int_data = ret_int;
+    }
+    return ret;
+}
+
