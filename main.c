@@ -460,37 +460,6 @@ bool isString (struct token* x) {
     }
     return result;
 }
-bool isSymbol (struct token* x) {
-    if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
-        return false;
-    }
-    if (isNumber (x)) {
-        return false;
-    }
-    return true;
-}
-bool isLiteral (struct token* x) {
-    if ((x->tokenp[0] == '(') || (x->tokenp[0] == ')')) {
-        return false;
-    }
-    return isNumber (x);
-}
-struct memory* findSymbol (struct token* t) {
-    int i;
-    struct memory* m;
-
-    for (m = top_memory;m->nextp != NULL;m = m->nextp) {
-        for (i = 0; i < t->size; i++) {
-            if (t->tokenp[i] != m->symbol[i]) {
-                break;
-            }
-        }
-        if (i == t->size) {
-            return m;
-        }
-    }
-    return NULL;
-}
 float myPow (int x) {
     int i;
     float ret = 1.0;
@@ -543,19 +512,6 @@ int mySize(int *x) {
     int i;
     for (i = 0;x[i] != '\0';i++) {;}
     return i-1;
-}
-bool isQuote (struct token* x) {
-    bool result = false;
-    if (x->size == 5) {
-        if ((x->tokenp[0] == 'q') &&
-            (x->tokenp[1] == 'u') &&
-            (x->tokenp[2] == 'o') &&
-            (x->tokenp[3] == 't') &&
-            (x->tokenp[4] == 'e')) {
-            result = true;
-        }
-    }
-    return result;
 }
 void initCells() {
     int i;
@@ -612,28 +568,6 @@ int getData () {
     return i;
 }
 
-float Eval () {
-    struct token* x = tokens;
-    struct memory* m;
-    /* 変数参照 */
-    if (isSymbol (x) == true) {
-       m = findSymbol (x);
-       return (toFloat (m->val, mySize(m->val)));
-    /* 定数リテラル */
-    } else if (isLiteral (x) == true) {
-        return (toFloat (x->tokenp, x->size));
-    /* (quote exp) */
-    } else if (isQuote (x->nextp) == true) {
-        /* quoted list of x */
-    }
-    return FLT_MAX;
-    /* (if test conseq alt) */
-    /* (set! var exp) */
-    /* (define var exp) */
-    /* (lambda (var*) exp) */
-    /* (begin exp*) */
-    /* (proc exp*) */
-}
 bool compString (char *a, char *b) {
     int size,i;
     bool ret = false;
