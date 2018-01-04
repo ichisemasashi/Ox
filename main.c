@@ -74,6 +74,7 @@ bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
+bool initDefinePood();
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -826,6 +827,7 @@ int main () {
     bool ret;
     printf("my version lispy...\n");
     initCells();
+    initDefinePood();
 
     while (1) {
         printf ("Lispy > ");
@@ -905,11 +907,11 @@ bool BI_Plus (struct Data *d) {
     }
     return ret;
 }
-bool BI_define (struct Data *d) {
+bool initDefinePood() {
     int i;
-    bool ret = true;
-    /* DefinePool */
+    bool ret = false;
     if (DefinePool == NULL) {
+        ret = true;
         if ((i = getData ()) == MAXBUF) {
             ret = false;
         }
@@ -925,8 +927,13 @@ bool BI_define (struct Data *d) {
         DefinePool->cons->car = &Datas[i];
         DefinePool->cons->car->typeflag = NIL;
         DefinePool->cons->cdr = NULL;
-    } else {
     }
+    return ret;
+}
+bool BI_define (struct Data *d) {
+    int i;
+    bool ret = true;
+    /* DefinePool */
     /*
          (define   <key>   <val>)  NIL
      *d -> [][] -> [][] -> [][] -> [][]
