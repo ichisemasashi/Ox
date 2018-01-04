@@ -653,19 +653,20 @@ bool apply (struct Data *d) {
 
 bool eval_co_each (struct Cons *cons) {
     bool ret = true;
-    while (cons->cdr!=NULL) {
-        if (cons->car->typeflag == CONS) {
-            ret = evalS (cons->car);
+    struct Cons *n = cons;
+    while (n->cdr!=NULL) {
+        if (n->car->typeflag == CONS) {
+            ret = evalS (n->car);
             if (ret == false) {
                 break;
             }
         } else {
-            ret = evalAtom (cons->car);
+            ret = evalAtom (n->car);
             if (ret == false) {
                 break;
             }
         }
-        cons = cons->cdr;
+        n = n->cdr;
     }
     return ret;
 }
