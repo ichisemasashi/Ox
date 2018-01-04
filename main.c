@@ -22,7 +22,7 @@ static struct token{
 } tokens[MAXTOKEN];
 
 enum useflag { use, not_use};
-enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL, NIL};
+enum typeflag { INT, FLOAT, STRING, CONS, SYMBOL, NIL, BOOL};
 typedef enum {true, false} bool;
 
 struct Data {
@@ -31,6 +31,7 @@ struct Data {
     int int_data;
     float float_data;
     char char_data[MAXSTRINGS];
+    bool bool;
     struct Cons * cons;
 };
 
@@ -71,6 +72,8 @@ bool BI_lambda (struct Data *);
 bool BI_if (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
+void copyData (struct Data *, struct Data *);
+
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -682,13 +685,16 @@ struct Data * findSymbol(struct Data *d) {
     }
     return ret;
 }
-void copy_char_data(char *from, char *to) {
+void copyData (struct Data *from, struct Data *to) {
     int i;
+    to->typeflag = from->typeflag;
+    to->int_data = from->int_data;
+    to->float_data = from->float_data;
+    to->cons = from->cons;
     for (i=0;i<MAXSTRINGS;i++) {
         to[i] = from[i];
     }
 }
-
 bool evalSymbol (struct Data *d) {
     bool (*func)(struct Data *);
     int i;
@@ -696,11 +702,7 @@ bool evalSymbol (struct Data *d) {
     bool ret = true;
     if ((d_ret = findSymbol(d)) != NULL) {
         /* defined symbol */
-        d->typeflag = d_ret->typeflag;
-        d->int_data = d_ret->int_data;
-        d->float_data = d_ret->float_data;
-        d->cons = d_ret->cons;
-        copy_char_data (d_ret->char_data, d->char_data);
+        copyData (d_ret, d);
     } else if ((func = findFunction (d)) != NULL) {
         /* built-in function */
     } else {
@@ -832,7 +834,11 @@ bool BI_Plus (struct Data *d) {
     if (isfloat == true) {
         ret_float = 0;
         while (args->cdr != NULL) {
-            ret_float += args->car->float_data;
+            if (args->car->typeflag ==FLOAT) {
+                ret_float += args->car->float_data;
+            } else {
+                ret_float += (float) args->car->int_data;
+            }
             freeData(args->car);
             c = args;
             args = args->cdr;
