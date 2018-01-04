@@ -547,10 +547,13 @@ int getConsCell () {
 }
 void freeConsCell (struct Cons *c) {
     c->useflag = not_use;
+    c->car = NULL;
+    c->cdr = NULL;
 }
 void freeData (struct Data *d) {
     int i;
     d->useflag = not_use;
+    d->cons = NULL;
     for (i=0;i<MAXSTRINGS;i++) {
         d->char_data[i] = 0;
     }
