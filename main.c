@@ -702,6 +702,7 @@ struct Data * findSymbol(struct Data *d) {
         while (pool != NULL) {
             if (compString (d->char_data, pool->car->char_data) == true) {
                 ret = pool->cdr->car;
+                break;
             }
             if (pool->cdr == NULL) {
                 break;
@@ -719,7 +720,7 @@ void copyData (struct Data *from, struct Data *to) {
     to->cons = from->cons;
     to->bool = from->bool;
     for (i=0;i<MAXSTRINGS;i++) {
-        to[i] = from[i];
+        to->char_data[i] = from->char_data[i];
     }
 }
 bool evalSymbol (struct Data *d) {
