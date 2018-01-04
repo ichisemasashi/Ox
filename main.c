@@ -30,9 +30,9 @@ struct Data {
     enum useflag useflag;
     int int_data;
     float float_data;
-    char char_data[MAXSTRINGS];
     bool bool;
     struct Cons * cons;
+    char char_data[MAXSTRINGS];
 };
 
 struct Cons {
@@ -73,7 +73,7 @@ bool BI_if (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 void copyData (struct Data *, struct Data *);
-
+bool eval_co_each (struct Cons *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -549,7 +549,11 @@ void freeConsCell (struct Cons *c) {
     c->useflag = not_use;
 }
 void freeData (struct Data *d) {
+    int i;
     d->useflag = not_use;
+    for (i=0;i<MAXSTRINGS;i++) {
+        d->char_data[i] = 0;
+    }
 }
 
 int getData () {
@@ -647,9 +651,8 @@ bool apply (struct Data *d) {
     return ret;
 }
 
-bool evalEach (struct Data *d) {
-    bool ret = true;;
-    struct Cons *cons = d->cons;
+bool eval_co_each (struct Cons *cons) {
+    bool ret = true;
     while (cons->cdr!=NULL) {
         if (cons->car->typeflag == CONS) {
             ret = evalS (cons->car);
@@ -663,6 +666,29 @@ bool evalEach (struct Data *d) {
             }
         }
         cons = cons->cdr;
+    }
+    return ret;
+}
+bool evalEach (struct Data *d) {
+    bool ret = true;;
+    char * s = d->cons->car->char_data;
+
+    if ((compString (s, "define") == true) ||
+        (compString (s, "DEFINE") == true)) {
+        ret = eval_co_each(d->cons->cdr->cdr);
+    } else if ((compString (s, "lambda") == true) ||
+               (compString (s, "LAMBDA") == true)) {
+    } else if ((compString (s, "quote") == true) ||
+               (compString (s, "QUOTE") == true)) {
+    } else if ((compString (s, "if") == true) ||
+               (compString (s, "IF") == true)) {
+    } else if ((compString (s, "loop") == true) ||
+               (compString (s, "LOOP") == true)) {
+        ret = eval_co_each(d->cons);
+    } else if ((compString (s, "load") == true) ||
+               (compString (s, "LOAD") == true)) {
+    } else {
+        ret = eval_co_each(d->cons);
     }
     return ret;
 }
@@ -691,6 +717,7 @@ void copyData (struct Data *from, struct Data *to) {
     to->int_data = from->int_data;
     to->float_data = from->float_data;
     to->cons = from->cons;
+    to->bool = from->bool;
     for (i=0;i<MAXSTRINGS;i++) {
         to[i] = from[i];
     }
@@ -702,7 +729,10 @@ bool evalSymbol (struct Data *d) {
     bool ret = true;
     if ((d_ret = findSymbol(d)) != NULL) {
         /* defined symbol */
-        copyData (d_ret, d);
+        if (d_ret->typeflag == CONS) {
+        } else {
+            copyData (d_ret, d);
+        }
     } else if ((func = findFunction (d)) != NULL) {
         /* built-in function */
     } else {
@@ -880,16 +910,31 @@ bool BI_define (struct Data *d) {
         }
         DefinePool = & Datas[i];
         DefinePool->typeflag = CONS;
+        if ((i = getConsCell ()) == MAXBUF) {
+            ret = false;
+        }
+        DefinePool->cons = &ConsCells[i];
+        if ((i = getData ()) == MAXBUF) {
+            ret = false;
+        }
+        DefinePool->cons->car = &Datas[i];
+        DefinePool->cons->car->typeflag = NIL;
+        DefinePool->cons->cdr = NULL;
     } else {
-        d->cons->cdr->cdr->cdr = DefinePool->cons;
     }
+    /*
+         (define   <key>   <val>)  NIL
+     *d -> [][] -> [][] -> [][] -> [][]
+    */
+    d->cons->cdr->cdr->cdr = DefinePool->cons;
     DefinePool->cons = d->cons->cdr;
+
+    freeData (d->cons->cdr->cdr->cdr->car);
+    freeConsCell (d->cons->cdr->cdr->cdr);
     freeData (d->cons->car);
     freeConsCell (d->cons);
-    d->typeflag = DefinePool->cons->car->typeflag;
-    for (i=0;i<MAXSTRINGS;i++) {
-        d->char_data[i] = DefinePool->cons->car->char_data[i];
-    }
+    copyData (DefinePool->cons->car, d);
+
     return ret;
 }
 bool BI_lambda (struct Data *d) {
