@@ -663,11 +663,49 @@ bool evalEach (struct Data *d) {
     }
     return ret;
 }
+struct Data * findSymbol(struct Data *d) {
+    struct Data *ret = NULL;
+    struct Cons *pool;
+    if ((d->typeflag != SYMBOL) || (DefinePool == NULL)) {
+        ret = NULL;
+    } else {
+        pool = DefinePool->cons;
+        while (pool != NULL) {
+            if (compString (d->char_data, pool->car->char_data) == true) {
+                ret = pool->cdr->car;
+            }
+            if (pool->cdr == NULL) {
+                break;
+            }
+            pool = pool->cdr->cdr;
+        }
+    }
+    return ret;
+}
+void copy_char_data(char *from, char *to) {
+    int i;
+    for (i=0;i<MAXSTRINGS;i++) {
+        to[i] = from[i];
+    }
+}
+
 bool evalSymbol (struct Data *d) {
+    bool (*func)(struct Data *);
+    int i;
+    struct Data *d_ret;
     bool ret = true;
-    /* of define */
-    /* in function */
-    /* special form */
+    if ((d_ret = findSymbol(d)) != NULL) {
+        /* defined symbol */
+        d->typeflag = d_ret->typeflag;
+        d->int_data = d_ret->int_data;
+        d->float_data = d_ret->float_data;
+        d->cons = d_ret->cons;
+        copy_char_data (d_ret->char_data, d->char_data);
+    } else if ((func = findFunction (d)) != NULL) {
+        /* built-in function */
+    } else {
+        /* special form */
+    }
     return ret;
 }
 bool evalS (struct Data *d) {
@@ -713,7 +751,39 @@ bool myEval () {
     return ret;
 }
 
-void myPrint () {
+bool printS (struct Data *d) {
+    return true;
+}
+bool printAtom (struct Data *d) {
+    if (d->typeflag == INT) {
+        printf ("%d\n",d->int_data);
+    } else if (d->typeflag == FLOAT) {
+        printf ("%f\n",d->float_data);
+    } else if (d->typeflag == STRING) {
+        printf ("%s\n",d->char_data);
+    } else if (d->typeflag == SYMBOL) {
+        printf ("%s\n",d->char_data);
+    } else if (d->typeflag == NIL) {
+        printf ("NIL\n");
+    }
+    freeData (d);
+    return true;
+}
+bool myPrint () {
+    bool ret = true;
+    struct Data *d = &Datas[index_of_Read_Datas];
+    if (d->typeflag == CONS) {
+        ret = printS (d);
+        if (ret == false) {
+            return false;
+        }
+    } else {
+        ret = printAtom (d);
+        if (ret == false) {
+            return false;
+        }
+    }
+    return ret;
 }
 int main () {
     bool ret;
@@ -732,7 +802,11 @@ int main () {
             printf("EVAL ERROR!!!!\n");
             break;
         }
-        myPrint();
+        ret = myPrint();
+        if (ret == false) {
+            printf("PRINT ERROR!!!!\n");
+            break;
+        }
     }
     return 0;
 }
