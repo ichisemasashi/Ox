@@ -590,7 +590,7 @@ int mysizeof(char *a, int maxsize) {
     }
     return ret;
 }
-int strcmp (char *s, char *t) {
+int mystrcmp (char *s, char *t) {
     for ( ; *s == *t; s++,t++) {
         if (*s == '\0') {
             return 0;
@@ -604,7 +604,7 @@ bool compString (char *a, char *b) {
     if ((size = mysizeof(a,MAXSTRINGS)) == mysizeof(b,MAXSTRINGS)) {
         if (size == 0) {
             return true;
-        } else if ((i = strcmp (a, b)) == 0) {
+        } else if ((i = mystrcmp (a, b)) == 0) {
             return true; 
         }
     }
