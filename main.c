@@ -579,22 +579,34 @@ int getData () {
     return i;
 }
 
+int mysizeof(char *a, int maxsize) {
+    int ret;
+    char *p = a;
+    while (*p != '\0') {p++;}
+
+    ret = p - a;
+    if (maxsize < ret) {
+        ret = maxsize;
+    }
+    return ret;
+}
+int strcmp (char *s, char *t) {
+    for ( ; *s == *t; s++,t++) {
+        if (*s == '\0') {
+            return 0;
+        }
+   }
+   return *s - *t;
+}
 bool compString (char *a, char *b) {
     int size,i;
     bool ret = false;
-    if ((size = sizeof(a)) == sizeof(b)) {
+    if ((size = mysizeof(a,MAXSTRINGS)) == mysizeof(b,MAXSTRINGS)) {
         if (size == 0) {
             return true;
+        } else if ((i = strcmp (a, b)) == 0) {
+            return true; 
         }
-        for(i=0;(i<size) && ((a[i] != '\0') || (b[i] != '\0'));i++) {
-            if (a[i] != b[i]) {
-                break;
-            }
-        }
-    }
-    if ((i == size) ||
-        ((a[i] == b[i]) && a[i] == '\0')) {
-        ret = true;
     }
     return ret;
 }
@@ -705,7 +717,7 @@ struct Data * findSymbol(struct Data *d) {
     } else {
         pool = DefinePool->cons;
         while (pool != NULL) {
-            if (compString (d->char_data, pool->car->char_data) == true) {
+            if ((pool->car->typeflag == SYMBOL) && (compString (d->char_data, pool->car->char_data) == true)) {
                 ret = pool->cdr->car;
                 break;
             }
@@ -938,11 +950,12 @@ bool BI_define (struct Data *d) {
          (define   <key>   <val>)  NIL
      *d -> [][] -> [][] -> [][] -> [][]
     */
+    freeData (d->cons->cdr->cdr->cdr->car);
+    freeConsCell (d->cons->cdr->cdr->cdr);
+
     d->cons->cdr->cdr->cdr = DefinePool->cons;
     DefinePool->cons = d->cons->cdr;
 
-    freeData (d->cons->cdr->cdr->cdr->car);
-    freeConsCell (d->cons->cdr->cdr->cdr);
     freeData (d->cons->car);
     freeConsCell (d->cons);
     copyData (DefinePool->cons->car, d);
