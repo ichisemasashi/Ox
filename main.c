@@ -72,15 +72,21 @@ bool BI_lambda (struct Data *);
 bool BI_if (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
+bool BI_equal (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
 bool initDefinePood();
+void freeConsCells (struct Cons *);
+void freeConsCell (struct Cons *);
+void freeData (struct Data *);
+
 
 struct functionName{
     char name[MAXSTRINGS];
     bool (*func)(struct Data*);
 } BIfunc[] = {
     "+", BI_Plus,
+    "=", BI_equal,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -546,6 +552,19 @@ int getConsCell () {
     }
     return i;
 }
+void freeConsCells (struct Cons *c) {
+    struct Cons *cons = c, *n = c->cdr, *tmp;
+    while (n != NULL) {
+        if (cons->car->typeflag == CONS) {
+            freeConsCells (cons->car->cons);
+        }
+        freeData (cons->car);
+        freeConsCell (cons);
+        tmp = n->cdr;
+        cons = n;
+        n = tmp;
+    }
+}
 void freeConsCell (struct Cons *c) {
     c->useflag = not_use;
     c->car = NULL;
@@ -815,6 +834,12 @@ bool printAtom (struct Data *d) {
         printf ("%s\n",d->char_data);
     } else if (d->typeflag == NIL) {
         printf ("NIL\n");
+    } else if (d->typeflag == BOOL) {
+        if (d->bool == true) {
+            printf ("TRUE\n");
+        } else {
+            printf ("FALSE\n");
+        }
     }
     freeData (d);
     return true;
@@ -919,6 +944,69 @@ bool BI_Plus (struct Data *d) {
     }
     return ret;
 }
+bool BI_equal (struct Data *d) {
+/*      =      <a1>    <a2> .... NIL
+  *d -> [][] -> [][] -> [][]...-> [][]
+*/
+    bool ret = true;
+    struct Cons *cons = d->cons->cdr;
+    struct Data *tmp;
+
+    copyData (cons->car, tmp);
+
+    while((cons->cdr->car->typeflag != NIL) && (cons->cdr->cdr != NULL)) {
+        if (tmp->typeflag == cons->cdr->car->typeflag) {
+            if (tmp->typeflag == INT) {
+                if (tmp->int_data != cons->cdr->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (tmp->typeflag == FLOAT) {
+                if (tmp->float_data != cons->cdr->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (tmp->typeflag == STRING) {
+                if (compString (tmp->char_data,
+                                cons->cdr->car->char_data) == false) {
+                    ret = false;
+                    break;
+                }
+            } else if (tmp->typeflag == SYMBOL) {
+                if (compString (tmp->char_data,
+                                cons->cdr->car->char_data) == false) {
+                    ret = false;
+                    break;
+                }
+            } else if (tmp->typeflag == CONS) {
+                ret = false;
+                break;
+            } else if (tmp->typeflag == NIL) {
+            } else if (tmp->typeflag == BOOL) {
+                if (tmp->bool != cons->cdr->car->bool) {
+                    ret = false;
+                    break;
+                }
+            }
+        } else {
+            ret = false;
+            break;
+        }
+
+        cons = cons->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = BOOL;
+    d->cons = NULL;
+    if (ret == true) {
+        d->bool = true;
+    } else {
+        d->bool = false;
+    }
+    return true;
+}
+
 bool initDefinePood() {
     int i;
     bool ret = false;
