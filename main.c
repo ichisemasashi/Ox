@@ -79,7 +79,8 @@ bool initDefinePood();
 void freeConsCells (struct Cons *);
 void freeConsCell (struct Cons *);
 void freeData (struct Data *);
-
+bool equalS (struct Data *a, struct Data *b);
+void mystrcpy (char *from, char *to);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -944,6 +945,14 @@ bool BI_Plus (struct Data *d) {
     }
     return ret;
 }
+bool equalS (struct Data *a, struct Data *b) {
+    bool ret = false;
+    struct Data *s, *p;
+    struct Cons *t = a->cons, *q = b->cons;
+
+    return ret;
+}
+
 bool BI_equal (struct Data *d) {
 /*      =      <a1>    <a2> .... NIL
   *d -> [][] -> [][] -> [][]...-> [][]
@@ -1006,28 +1015,74 @@ bool BI_equal (struct Data *d) {
     }
     return true;
 }
-
+void mystrcpy (char *from, char *to) {
+    while ((*to = *from) != '\0') {
+        to++;
+        from++;
+    }
+}
+bool initDefinePool_addBool () {
+    int i,r;
+    struct Cons *c, *n = DefinePool->cons;;
+    struct Data *d;
+/*   "true"   true  "false"  false    NIL
+  D -> [][] -> [][] -> [][] -> [][] -> [][/]
+       (3)     (2)      (1)    (0)
+*/
+    for (i = 0; i < 4; i++) {
+        if ((r = getConsCell ()) == MAXBUF) {
+            return false;
+        }
+        c = &ConsCells[r];
+        c->cdr = n;
+        if ((r = getData ()) == MAXBUF) {
+            return false;
+        }
+        d = &Datas[r];
+        c->car = d;
+        n = c;
+        if (i == 0) {
+            d->typeflag = BOOL;
+            d->bool = false;
+        } else if (i == 1) {
+            d->typeflag = SYMBOL;
+            mystrcpy ("false",d->char_data);
+        } else if (i == 2) {
+            d->typeflag = BOOL;
+            d->bool = true;
+        } else if (i == 3) {
+            d->typeflag = SYMBOL;
+            mystrcpy ("true",d->char_data);
+        } 
+    }
+    DefinePool->cons = n;
+    return true;
+}
 bool initDefinePood() {
     int i;
     bool ret = false;
     if (DefinePool == NULL) {
         ret = true;
         if ((i = getData ()) == MAXBUF) {
-            ret = false;
+            return false;
         }
         DefinePool = & Datas[i];
         DefinePool->typeflag = CONS;
         if ((i = getConsCell ()) == MAXBUF) {
-            ret = false;
+            return false;
         }
         DefinePool->cons = &ConsCells[i];
         if ((i = getData ()) == MAXBUF) {
-            ret = false;
+            return false;
         }
         DefinePool->cons->car = &Datas[i];
         DefinePool->cons->car->typeflag = NIL;
         DefinePool->cons->cdr = NULL;
     }
+
+    /* add TRUE, FALSE */
+    initDefinePool_addBool ();
+
     return ret;
 }
 bool BI_define (struct Data *d) {
