@@ -675,6 +675,7 @@ bool spForm (struct Data *d) {
 bool apply (struct Data *d) {
     bool (*func)(struct Data *);
     bool ret = true;
+    struct Data *tmpData;
     if (d->typeflag != CONS) {
     } else if (d->cons->car->typeflag != SYMBOL) {
         printf ("Can't apply this CAR.\n");
