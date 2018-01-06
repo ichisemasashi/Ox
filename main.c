@@ -72,6 +72,7 @@ bool BI_lambda (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 bool BI_equal (struct Data *);
+bool BI_car (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
 bool initDefinePood();
@@ -87,6 +88,7 @@ struct functionName{
 } BIfunc[] = {
     "+", BI_Plus,
     "=", BI_equal,
+    "car", BI_car,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1181,4 +1183,20 @@ bool BI_loop (struct Data *d) {
 }
 bool BI_load (struct Data *d) {
     return true;
+}
+bool BI_car (struct Data *d){
+    bool ret = true;
+    struct Cons *tmp1,*tmp2;
+    if ((d->typeflag == CONS) &&
+        (d->cons->cdr->car->typeflag == CONS)) {
+        tmp1 = d->cons->cdr->car->cons;
+        tmp2 = d->cons;
+        copyData (tmp1->car, d);
+        tmp1->car->typeflag = INT;
+        tmp1->car->cons = NULL;
+        freeConsCells (tmp2);
+    } else {
+        ret = false;
+    }
+    return ret;
 }
