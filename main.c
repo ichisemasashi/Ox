@@ -946,9 +946,56 @@ bool BI_Plus (struct Data *d) {
     return ret;
 }
 bool equalS (struct Data *a, struct Data *b) {
-    bool ret = false;
+    bool ret = true;
     struct Data *s, *p;
     struct Cons *t = a->cons, *q = b->cons;
+    enum typeflag flag;
+
+    while ((t->cdr != NULL) && (q->cdr != NULL)) {
+        s = t->car, p = q->car;
+        if (s->typeflag == p->typeflag) {
+            flag = s->typeflag;
+            if (flag == INT) {
+                if (s->int_data != p->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (flag == FLOAT) {
+                if (s->float_data != p->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (flag == STRING) {
+                if (compString(s->char_data, p->char_data) == false) {
+                    ret = false;
+                    break;
+                }
+            } else if (flag == CONS) {
+                if (equalS (s, p) == false) {
+                }
+            } else if (flag == SYMBOL) {
+                if (compString(s->char_data, p->char_data) == false) {
+                    ret = false;
+                    break;
+                }
+            } else if (flag == NIL) {
+                if ((t->cdr == NULL) || (q->cdr == NULL)) {
+                    ret = false;
+                    break;
+                }
+            } else if (flag == BOOL) {
+                if (s->bool != p->bool) {
+                    ret = false;
+                    break;
+                }
+            }
+        } else {
+            ret = false;
+            break;
+        }
+        t = t->cdr;
+        q = q->cdr;
+    }
 
     return ret;
 }
@@ -988,8 +1035,10 @@ bool BI_equal (struct Data *d) {
                     break;
                 }
             } else if (tmp->typeflag == CONS) {
-                ret = false;
-                break;
+                if (equalS (cons->car, cons->cdr->car) == false) {
+                    ret = false;
+                    break;
+                }
             } else if (tmp->typeflag == NIL) {
             } else if (tmp->typeflag == BOOL) {
                 if (tmp->bool != cons->cdr->car->bool) {
