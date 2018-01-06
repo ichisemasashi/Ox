@@ -69,7 +69,6 @@ bool evalS (struct Data *);
 bool evalAtom (struct Data *);
 bool BI_define (struct Data *);
 bool BI_lambda (struct Data *);
-bool BI_if (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 bool BI_equal (struct Data *);
@@ -657,10 +656,7 @@ bool spForm (struct Data *d) {
     } else if (((ret = compString (car, "quote")) == true) ||
                ((ret = compString (car, "QUOTE")) == true)) {
         /* quote */
-    } else if (((ret = compString (car, "if")) == true) ||
-               ((ret = compString (car, "IF")) == true)) {
         /* if */
-        ret = BI_if (d);
     } else if (((ret = compString (car, "loop")) == true) ||
                ((ret = compString (car, "LOOP")) == true)) {
         /* loop */
@@ -1178,9 +1174,6 @@ bool BI_define (struct Data *d) {
     return ret;
 }
 bool BI_lambda (struct Data *d) {
-    return true;
-}
-bool BI_if (struct Data *d) {
     return true;
 }
 bool BI_loop (struct Data *d) {
