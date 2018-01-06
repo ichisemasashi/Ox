@@ -946,7 +946,7 @@ bool BI_Plus (struct Data *d) {
     return ret;
 }
 bool equalS (struct Data *a, struct Data *b) {
-    bool ret = true;
+    bool ret = false;
     struct Data *s, *p;
     struct Cons *t = a->cons, *q = b->cons;
     enum typeflag flag;
@@ -997,6 +997,9 @@ bool equalS (struct Data *a, struct Data *b) {
         q = q->cdr;
     }
 
+    if ((t->cdr == NULL) && (q->cdr == NULL)) {
+        ret = true;
+    }
     return ret;
 }
 
@@ -1005,43 +1008,39 @@ bool BI_equal (struct Data *d) {
   *d -> [][] -> [][] -> [][]...-> [][]
 */
     bool ret = true;
-    struct Cons *cons = d->cons->cdr;
+    struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    copyData (cons->car, tmp);
-
-    while((cons->cdr->car->typeflag != NIL) && (cons->cdr->cdr != NULL)) {
-        if (tmp->typeflag == cons->cdr->car->typeflag) {
-            if (tmp->typeflag == INT) {
-                if (tmp->int_data != cons->cdr->car->int_data) {
+    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+        if (n->car->typeflag == nn->car->typeflag) {
+            if (n->car->typeflag == INT) {
+                if (n->car->int_data != nn->car->int_data) {
                     ret = false;
                     break;
                 }
-            } else if (tmp->typeflag == FLOAT) {
-                if (tmp->float_data != cons->cdr->car->float_data) {
+            } else if (n->car->typeflag == FLOAT) {
+                if (n->car->float_data != nn->car->float_data) {
                     ret = false;
                     break;
                 }
-            } else if (tmp->typeflag == STRING) {
-                if (compString (tmp->char_data,
-                                cons->cdr->car->char_data) == false) {
+            } else if (n->car->typeflag == STRING) {
+                if (compString (n->car->char_data, nn->car->char_data) == false) {
                     ret = false;
                     break;
                 }
-            } else if (tmp->typeflag == SYMBOL) {
-                if (compString (tmp->char_data,
-                                cons->cdr->car->char_data) == false) {
+            } else if (n->car->typeflag == SYMBOL) {
+                if (compString (n->car->char_data, nn->car->char_data) == false) {
                     ret = false;
                     break;
                 }
-            } else if (tmp->typeflag == CONS) {
-                if (equalS (cons->car, cons->cdr->car) == false) {
+            } else if (n->car->typeflag == CONS) {
+                if (equalS (n->car, nn->car) == false) {
                     ret = false;
                     break;
                 }
-            } else if (tmp->typeflag == NIL) {
-            } else if (tmp->typeflag == BOOL) {
-                if (tmp->bool != cons->cdr->car->bool) {
+            } else if (n->car->typeflag == NIL) {
+            } else if (n->car->typeflag == BOOL) {
+                if (n->car->bool != nn->car->bool) {
                     ret = false;
                     break;
                 }
@@ -1051,7 +1050,8 @@ bool BI_equal (struct Data *d) {
             break;
         }
 
-        cons = cons->cdr;
+        n = nn;
+        nn = nn->cdr;
     }
 
     freeConsCells (d->cons);
