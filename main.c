@@ -675,7 +675,8 @@ bool spForm (struct Data *d) {
 bool apply (struct Data *d) {
     bool (*func)(struct Data *);
     bool ret = true;
-    if (d->cons->car->typeflag != SYMBOL) {
+    if (d->typeflag != CONS) {
+    } else if (d->cons->car->typeflag != SYMBOL) {
         printf ("Can't apply this CAR.\n");
         ret = false;
     } else if ((func = findFunction(d->cons->car)) != NULL) {
@@ -709,6 +710,7 @@ bool eval_co_each (struct Cons *cons) {
 bool evalEach (struct Data *d) {
     bool ret = true;;
     char * s = d->cons->car->char_data;
+    struct Cons *tmpCons;
 
     if ((compString (s, "define") == true) ||
         (compString (s, "DEFINE") == true)) {
@@ -719,6 +721,26 @@ bool evalEach (struct Data *d) {
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
                (compString (s, "IF") == true)) {
+        ret = evalS(d->cons->cdr->car);
+        if (ret == false) {
+            return false;
+        }
+        if (d->cons->cdr->car->typeflag == BOOL) {
+            if (d->cons->cdr->car->bool == true) {
+                tmpCons = d->cons->cdr->cdr->car->cons;
+                d->cons->cdr->cdr->car->cons = NULL;
+                d->cons->cdr->cdr->car->typeflag = INT;
+            } else {
+                tmpCons = d->cons->cdr->cdr->cdr->car->cons;
+                d->cons->cdr->cdr->cdr->car->cons = NULL;
+                d->cons->cdr->cdr->cdr->car->typeflag = INT;
+            }
+            freeConsCells (d->cons);
+            d->cons = tmpCons;
+            evalS(d);
+        }else {
+            ret = false;
+        }
     } else if ((compString (s, "loop") == true) ||
                (compString (s, "LOOP") == true)) {
         ret = eval_co_each(d->cons);
