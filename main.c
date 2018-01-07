@@ -72,6 +72,7 @@ bool BI_lambda (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 bool BI_equal (struct Data *);
+bool BI_quote (struct Data *);
 bool BI_car (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
@@ -658,6 +659,7 @@ bool spForm (struct Data *d) {
     } else if (((ret = compString (car, "quote")) == true) ||
                ((ret = compString (car, "QUOTE")) == true)) {
         /* quote */
+        ret = BI_quote (d);
         /* if */
     } else if (((ret = compString (car, "loop")) == true) ||
                ((ret = compString (car, "LOOP")) == true)) {
@@ -1182,6 +1184,13 @@ bool BI_loop (struct Data *d) {
     return true;
 }
 bool BI_load (struct Data *d) {
+    return true;
+}
+bool BI_quote (struct Data *d) {
+    struct Cons *tmp = d->cons;
+    d->cons = d->cons->cdr;
+    freeData (tmp->car);
+    freeConsCell (tmp);
     return true;
 }
 bool BI_car (struct Data *d){
