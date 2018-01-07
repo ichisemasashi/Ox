@@ -1209,7 +1209,14 @@ bool BI_load (struct Data *d) {
 }
 bool BI_quote (struct Data *d) {
     struct Cons *tmp = d->cons;
-    d->cons = d->cons->cdr;
+    if (d->cons->cdr->car->typeflag == CONS) {
+        d->cons = d->cons->cdr->car->cons;
+        freeData (tmp->cdr->car);
+        freeConsCell (tmp->cdr);
+    } else {
+        copyData (d->cons->cdr->car, d);
+        freeConsCells (tmp->cdr);
+    }
     freeData (tmp->car);
     freeConsCell (tmp);
     return true;
