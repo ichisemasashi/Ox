@@ -82,6 +82,7 @@ void freeConsCell (struct Cons *);
 void freeData (struct Data *);
 bool equalS (struct Data *a, struct Data *b);
 void mystrcpy (char *from, char *to);
+bool printAtom (struct Data *d);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -845,24 +846,40 @@ bool myEval () {
 }
 
 bool printS (struct Data *d) {
+    struct Cons *n = d->cons;
+
+    printf ("(");
+    while (n->cdr != NULL) {
+        if (n != d->cons) {
+            printf (" ");
+        }
+        if (n->car->typeflag == CONS) {
+            printS(n->car);
+        }
+        printAtom (n->car);
+        n = n->cdr;
+    }
+    printf (")");
+    freeConsCells (d->cons);
+    freeData (d);
     return true;
 }
 bool printAtom (struct Data *d) {
     if (d->typeflag == INT) {
-        printf ("%d\n",d->int_data);
+        printf ("%d",d->int_data);
     } else if (d->typeflag == FLOAT) {
-        printf ("%f\n",d->float_data);
+        printf ("%f",d->float_data);
     } else if (d->typeflag == STRING) {
-        printf ("%s\n",d->char_data);
+        printf ("%s",d->char_data);
     } else if (d->typeflag == SYMBOL) {
-        printf ("%s\n",d->char_data);
+        printf ("%s",d->char_data);
     } else if (d->typeflag == NIL) {
-        printf ("NIL\n");
+        printf ("NIL");
     } else if (d->typeflag == BOOL) {
         if (d->bool == true) {
-            printf ("TRUE\n");
+            printf ("TRUE");
         } else {
-            printf ("FALSE\n");
+            printf ("FALSE");
         }
     }
     freeData (d);
@@ -873,11 +890,13 @@ bool myPrint () {
     struct Data *d = &Datas[index_of_Read_Datas];
     if (d->typeflag == CONS) {
         ret = printS (d);
+        printf("\n");
         if (ret == false) {
             return false;
         }
     } else {
         ret = printAtom (d);
+        printf("\n");
         if (ret == false) {
             return false;
         }
