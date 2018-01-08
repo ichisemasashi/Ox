@@ -84,6 +84,8 @@ bool equalS (struct Data *a, struct Data *b);
 void mystrcpy (char *from, char *to);
 bool printAtom (struct Data *d);
 bool BI_cons (struct Data *d);
+bool setDefinePoolS (struct Data *, struct Data *);
+void freeDefinePoolS (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -561,10 +563,13 @@ int getConsCell () {
 void freeConsCells (struct Cons *c) {
     struct Cons *cons = c, *n = c->cdr, *tmp;
     while (n != NULL) {
-        if (cons->car->typeflag == CONS) {
-            freeConsCells (cons->car->cons);
+        if (cons->car == NULL) {
+        } else {
+            if (cons->car->typeflag == CONS) {
+                freeConsCells (cons->car->cons);
+            }
+            freeData (cons->car);
         }
-        freeData (cons->car);
         freeConsCell (cons);
         tmp = n->cdr;
         cons = n;
@@ -694,12 +699,29 @@ bool apply (struct Data *d) {
 
 bool eval_co_each (struct Cons *cons) {
     bool ret = true;
-    struct Cons *n = cons;
+    struct Cons *n = cons, *tmp;
     while (n->cdr!=NULL) {
         if (n->car->typeflag == CONS) {
-            ret = evalS (n->car);
-            if (ret == false) {
-                break;
+            if ((n->cdr->car != NULL) && (n->cdr->car->typeflag == CONS) && 
+                (n->car->cons != NULL) && (n->car->cons->car->typeflag == SYMBOL) && 
+                (compString (n->car->cons->car->char_data, "lambda") == true)) {
+                tmp = n;
+                if ((ret = setDefinePoolS (tmp->car->cons->cdr->car, tmp->cdr->car)) == false) {
+                    break;
+                }
+                if ((ret = evalS (tmp->car->cons->cdr->cdr->car)) == false) {
+                    break;
+                }
+                freeDefinePoolS (tmp->car->cons->cdr->car);
+                tmp->car->cons->cdr->cdr->car = NULL;
+                n->car = tmp->car->cons->cdr->cdr->car;
+                n->cdr = n->cdr->cdr;
+                freeConsCells (tmp);
+            } else {
+                ret = evalS (n->car);
+                if (ret == false) {
+                    break;
+                }
             }
         } else {
             ret = evalAtom (n->car);
@@ -1250,4 +1272,29 @@ bool BI_cons (struct Data *d) {
         ret = false;
     }
     return ret;
+}
+bool setDefinePoolS (struct Data *k, struct Data *v){
+    bool ret = true;
+    struct Cons *nk = k->cons, *nv = v->cons, *tmp1, *tmp2;
+    while ((nk->cdr != NULL) || (nk->car->typeflag != NIL)) {
+        tmp1 = DefinePool->cons;
+        DefinePool->cons = nk;
+        tmp2 = nk->cdr;
+        DefinePool->cons->cdr = nv;
+        DefinePool->cons->cdr->cdr = tmp1;
+        nk = tmp2, nv = nv->cdr;
+    }
+    if ((nk == NULL ) && (nv != NULL)){ 
+        ret = false;
+    } else if ((nk != NULL) && (nv == NULL)) {
+        ret = false;
+    }
+    return true;
+}
+void freeDefinePoolS (struct Data *d) {
+    struct Cons *n = d->cons;
+    while (n != NULL) {
+        DefinePool->cons = DefinePool->cons->cdr->cdr;
+        n = n->cdr;
+    }
 }
