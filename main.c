@@ -85,8 +85,8 @@ bool equalS (struct Data *a, struct Data *b);
 void mystrcpy (char *from, char *to);
 bool printAtom (struct Data *d);
 bool BI_cons (struct Data *d);
-bool setDefinePoolS (struct Data *, struct Data *);
-void freeDefinePoolS (struct Data *);
+int setDefinePoolS (struct Data *, struct Data *);
+void freeDefinePoolS (int);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -700,21 +700,23 @@ bool apply (struct Data *d) {
 }
 
 bool eval_co_each (struct Cons *cons) {
+    int i;
     bool ret = true;
     struct Cons *n = cons, *tmp;
-    while (n->cdr!=NULL) {
+    while ((n != NULL) && (n->cdr!=NULL)) {
         if (n->car->typeflag == CONS) {
             if ((n->cdr->car != NULL) && (n->cdr->car->typeflag == CONS) && 
                 (n->car->cons != NULL) && (n->car->cons->car->typeflag == SYMBOL) && 
                 (compString (n->car->cons->car->char_data, "lambda") == true)) {
                 tmp = n;
-                if ((ret = setDefinePoolS (tmp->car->cons->cdr->car, tmp->cdr->car)) == false) {
+                if ((i = setDefinePoolS (tmp->car->cons->cdr->car, tmp->cdr->car)) == 0) {
+                    ret = false;
                     break;
                 }
                 if ((ret = evalS (tmp->car->cons->cdr->cdr->car)) == false) {
                     break;
                 }
-                freeDefinePoolS (tmp->car->cons->cdr->car);
+                freeDefinePoolS (i);
                 tmp->car->cons->cdr->cdr->car = NULL;
                 n->car = tmp->car->cons->cdr->cdr->car;
                 n->cdr = n->cdr->cdr;
@@ -1299,28 +1301,30 @@ bool BI_cons (struct Data *d) {
     }
     return ret;
 }
-bool setDefinePoolS (struct Data *k, struct Data *v){
-    bool ret = true;
+int setDefinePoolS (struct Data *k, struct Data *v){
+    int ret = 0;
     struct Cons *nk = k->cons, *nv = v->cons, *tmp1, *tmp2;
     while ((nk->cdr != NULL) || (nk->car->typeflag != NIL)) {
         tmp1 = DefinePool->cons;
-        DefinePool->cons = nk;
         tmp2 = nk->cdr;
+        DefinePool->cons = nk;
+        nk = tmp2;
+        tmp2 = nv->cdr;
         DefinePool->cons->cdr = nv;
+        nv = tmp2;
         DefinePool->cons->cdr->cdr = tmp1;
-        nk = tmp2, nv = nv->cdr;
+        ret++;
     }
     if ((nk == NULL ) && (nv != NULL)){ 
-        ret = false;
+        ret = 0;
     } else if ((nk != NULL) && (nv == NULL)) {
-        ret = false;
+        ret = 0;
     }
-    return true;
+    return ret;
 }
-void freeDefinePoolS (struct Data *d) {
-    struct Cons *n = d->cons;
-    while (n != NULL) {
+void freeDefinePoolS (int size) {
+    int i;
+    for (i=0;i<=size;i++) {
         DefinePool->cons = DefinePool->cons->cdr->cdr;
-        n = n->cdr;
     }
 }
