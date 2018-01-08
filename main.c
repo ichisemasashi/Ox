@@ -83,6 +83,7 @@ void freeData (struct Data *);
 bool equalS (struct Data *a, struct Data *b);
 void mystrcpy (char *from, char *to);
 bool printAtom (struct Data *d);
+bool BI_cons (struct Data *d);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -91,6 +92,7 @@ struct functionName{
     "+", BI_Plus,
     "=", BI_equal,
     "car", BI_car,
+    "cons", BI_cons,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1223,6 +1225,27 @@ bool BI_car (struct Data *d){
         tmp1->car->typeflag = INT;
         tmp1->car->cons = NULL;
         freeConsCells (tmp2);
+    } else {
+        ret = false;
+    }
+    return ret;
+}
+bool BI_cons (struct Data *d) {
+    int i;
+    struct Cons *tmp;
+    struct Data *car = d->cons->cdr->car, *cdr = d->cons->cdr->cdr->car;
+    bool ret = true;
+
+    if (car->typeflag == CONS) {
+        ret = false;
+    } else if (cdr->typeflag == CONS) {
+       tmp = d->cons; 
+       d->cons = d->cons->cdr;
+       freeData (tmp->car);
+       freeConsCell (tmp);
+       tmp = d->cons->cdr;
+       d->cons->cdr = cdr->cons;
+       freeConsCell (tmp);
     } else {
         ret = false;
     }
