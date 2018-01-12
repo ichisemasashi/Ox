@@ -716,10 +716,10 @@ bool eval_co_each (struct Cons *cons) {
                 if ((ret = evalS (tmp->car->cons->cdr->cdr->car)) == false) {
                     break;
                 }
-                freeDefinePoolS (i);
-                tmp->car->cons->cdr->cdr->car = NULL;
                 n->car = tmp->car->cons->cdr->cdr->car;
                 n->cdr = n->cdr->cdr;
+                freeDefinePoolS (i);
+                tmp->car->cons->cdr->cdr->car = NULL;
                 freeConsCells (tmp);
             } else {
                 ret = evalS (n->car);
