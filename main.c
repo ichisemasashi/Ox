@@ -1296,9 +1296,18 @@ bool BI_cons (struct Data *d) {
        tmp = d->cons->cdr;
        d->cons->cdr = cdr->cons;
        freeConsCell (tmp);
-    } else {
+    } else if ((cdr->typeflag == NIL) && (d->cons->cdr->cdr->cdr != NULL)){
+       tmp = d->cons->cdr->cdr; 
+       d->cons->cdr->cdr = d->cons->cdr->cdr->cdr;
+       freeData (tmp->car);
+       freeConsCell (tmp);
+       tmp = d->cons; 
+       d->cons = d->cons->cdr;
+       freeData (tmp->car);
+       freeConsCell (tmp);
+    } else { 
         ret = false;
-    }
+    } 
     return ret;
 }
 int setDefinePoolS (struct Data *k, struct Data *v){
