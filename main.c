@@ -823,7 +823,7 @@ bool copyConsData (struct Data *from, struct Data *to) {
     }
     nt = &ConsCells[i];
     to->cons = nt;
-    while ((nf->car->typeflag == NIL) && (nf->cdr == NULL)) {
+    while ((nf->car->typeflag != NIL) && (nf->cdr != NULL)) {
         if ((i = getData ()) == MAXBUF) {
             ret = false;
             break;
