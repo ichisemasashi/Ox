@@ -812,6 +812,45 @@ void copyData (struct Data *from, struct Data *to) {
         to->char_data[i] = from->char_data[i];
     }
 }
+bool copyConsData (struct Data *from, struct Data *to) {
+    int i;
+    bool ret = true;
+    struct Cons *nf = from->cons, *nt;
+    copyData (from, to);
+    if ((i = getConsCell ()) == MAXBUF) {
+        return false;
+    }
+    nt = &ConsCells[i];
+    to->cons = nt;
+    while ((nf->car->typeflag == NIL) && (nf->cdr == NULL)) {
+        if ((i = getData ()) == MAXBUF) {
+            ret = false;
+            break;
+        }
+        nt->car = &Datas[i];
+        copyData (nf->car, nt->car);
+        if (nf->car->typeflag == CONS) {
+            if ((ret = copyConsData (nf->car, nt->car)) == false) {
+                break;
+            }
+        }
+        if ((i = getConsCell ()) == MAXBUF) {
+            ret = false;
+            break;
+        }
+        nt->cdr = &ConsCells[i];
+        nf = nf->cdr;
+        nt = nt->cdr;
+    }
+    if ((i = getData ()) == MAXBUF) {
+        ret = false;
+    }
+    nt->car = & Datas[i];
+    nt->car->typeflag = NIL;
+    nt->cdr = NULL;
+
+    return ret;
+}
 bool evalSymbol (struct Data *d) {
     bool (*func)(struct Data *);
     int i;
@@ -820,6 +859,7 @@ bool evalSymbol (struct Data *d) {
     if ((d_ret = findSymbol(d)) != NULL) {
         /* defined symbol */
         if (d_ret->typeflag == CONS) {
+            ret = copyConsData (d_ret, d);
         } else {
             copyData (d_ret, d);
         }
