@@ -1318,8 +1318,8 @@ bool BI_cdr (struct Data *d) {
     } else if (d->cons->cdr->car->typeflag == NIL) {
         tmp = d->cons;
         d->cons = d->cons->cdr;
-        tmp->cdr = NULL;
-        freeConsCells (tmp);
+        freeData (tmp->car);
+        freeConsCell (tmp);
     } else {
         ret = false;
     }
