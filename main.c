@@ -87,6 +87,7 @@ bool printAtom (struct Data *d);
 bool BI_cons (struct Data *d);
 int setDefinePoolS (struct Data *, struct Data *);
 void freeDefinePoolS (int);
+bool copyConsData (struct Data *, struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -1317,9 +1318,8 @@ bool BI_cdr (struct Data *d) {
         freeConsCells (tmp);
     } else if (d->cons->cdr->car->typeflag == NIL) {
         tmp = d->cons;
-        d->cons = d->cons->cdr;
-        freeData (tmp->car);
-        freeConsCell (tmp);
+        copyData (d->cons->cdr->car, d);
+        freeConsCells (tmp);
     } else {
         ret = false;
     }
