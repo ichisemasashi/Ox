@@ -1315,6 +1315,11 @@ bool BI_cdr (struct Data *d) {
         d->cons = d->cons->cdr->car->cons->cdr;
         tmp->cdr->car->cons->cdr = NULL;
         freeConsCells (tmp);
+    } else if (d->cons->cdr->car->typeflag == NIL) {
+        tmp = d->cons;
+        d->cons = d->cons->cdr;
+        tmp->cdr = NULL;
+        freeConsCells (tmp);
     } else {
         ret = false;
     }
