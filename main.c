@@ -706,27 +706,9 @@ bool eval_co_each (struct Cons *cons) {
     struct Cons *n = cons, *tmp;
     while ((n != NULL) && (n->cdr!=NULL)) {
         if (n->car->typeflag == CONS) {
-            if ((n->cdr->car != NULL) && (n->cdr->car->typeflag == CONS) && 
-                (n->car->cons != NULL) && (n->car->cons->car->typeflag == SYMBOL) && 
-                (compString (n->car->cons->car->char_data, "lambda") == true)) {
-                tmp = n;
-                if ((i = setDefinePoolS (tmp->car->cons->cdr->car, tmp->cdr->car)) == 0) {
-                    ret = false;
-                    break;
-                }
-                if ((ret = evalS (tmp->car->cons->cdr->cdr->car)) == false) {
-                    break;
-                }
-                n->car = tmp->car->cons->cdr->cdr->car;
-                n->cdr = n->cdr->cdr;
-                freeDefinePoolS (i);
-                tmp->car->cons->cdr->cdr->car = NULL;
-                freeConsCells (tmp);
-            } else {
-                ret = evalS (n->car);
-                if (ret == false) {
-                    break;
-                }
+            ret = evalS (n->car);
+            if (ret == false) {
+                break;
             }
         } else {
             ret = evalAtom (n->car);
