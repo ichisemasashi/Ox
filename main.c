@@ -663,10 +663,12 @@ bool spForm (struct Data *d) {
         ((ret = compString (car, "DEFINE")) == true)) {
         /* define */
         ret = BI_define (d);
-    } else if (((ret = compString (car, "lambda")) == true) ||
-               ((ret = compString (car, "LAMBDA")) == true)) {
-        /* lambda */
-        ret = BI_lambda (d);
+    } else if (d->cons->car->typeflag == CONS) {
+        if (((ret = compString (d->cons->car->cons->car->char_data, "lambda")) == true) ||
+               ((ret = compString (d->cons->car->cons->car->char_data, "LAMBDA")) == true)) {
+            /* lambda */
+            ret = BI_lambda (d);
+        }
     } else if (((ret = compString (car, "quote")) == true) ||
                ((ret = compString (car, "QUOTE")) == true)) {
         /* quote */
