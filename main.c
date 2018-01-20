@@ -730,8 +730,9 @@ bool evalEach (struct Data *d) {
     if ((compString (s, "define") == true) ||
         (compString (s, "DEFINE") == true)) {
         ret = eval_co_each(d->cons->cdr->cdr);
-    } else if ((compString (s, "lambda") == true) ||
-               (compString (s, "LAMBDA") == true)) {
+    } else if ((d->cons->car->typeflag == CONS) &&
+                 ((compString (s, "lambda") == true) ||
+                  (compString (s, "LAMBDA") == true))) {
     } else if ((compString (s, "quote") == true) ||
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
