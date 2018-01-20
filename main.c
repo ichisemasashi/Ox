@@ -669,6 +669,8 @@ bool spForm (struct Data *d) {
             /* lambda */
             ret = BI_lambda (d);
         }
+    } else if (((ret = compString (car, "lambda")) == true) ||
+               ((ret = compString (car, "LAMBDA")) == true)) {
     } else if (((ret = compString (car, "quote")) == true) ||
                ((ret = compString (car, "QUOTE")) == true)) {
         /* quote */
@@ -739,6 +741,8 @@ bool evalEach (struct Data *d) {
     } else if ((d->cons->car->typeflag == CONS) &&
                  ((compString (d->cons->car->cons->car->char_data, "lambda") == true) ||
                   (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
+    } else if ((compString (s, "lambda") == true) ||
+               (compString (s, "LAMBDA") == true)) {
     } else if ((compString (s, "quote") == true) ||
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
@@ -1256,7 +1260,7 @@ bool BI_define (struct Data *d) {
 
     return ret;
 }
-bool BI_lambda (struct Data *d) {
+bool BI_lambda_helper (struct Data *d) {
     bool ret = true;
     int i;
     struct Data *params = d->cons->car->cons->cdr->car,
@@ -1264,24 +1268,70 @@ bool BI_lambda (struct Data *d) {
                 *args = d->cons->cdr->car;
     struct Cons *tmp;
 
+    i = setDefinePoolS (params, args);
+    if (i == 0) {
+        ret = false;
+    } else {
+        tmp = d->cons;
+        d->cons = body->cons;
+        freeConsCell (tmp->cdr);
+        freeConsCell (tmp->car->cons->cdr->cdr);
+        freeConsCell (tmp->car->cons->cdr);
+        freeData (tmp->car->cons->car);
+        freeConsCell (tmp->car->cons);
+        freeData (tmp->car);
+        freeConsCell (tmp);
+        evalS (d);
+        freeDefinePoolS (i);
+    }
+    return ret;
+}
+bool BI_lambda_helper2 (struct Data *d) {
+    bool ret = true;
+    int i;
+    struct Cons *tmp;
+    struct Data *params = d->cons->car->cons->cdr->car,
+                *body = d->cons->car->cons->cdr->cdr->car,
+                *args;
+
+    if ((i = getData ()) == MAXBUF) {
+        return false;
+    }
+    args = &Datas[i];
+    args->typeflag = CONS;
+    args->cons = d->cons->cdr;
+
+    i = setDefinePoolS (params, args);
+    if (i == 0) {
+        ret = false;
+    } else {
+        tmp = d->cons;
+        d->cons = body->cons;
+        freeConsCell (tmp->cdr);
+        freeConsCell (tmp->car->cons->cdr->cdr);
+        freeConsCell (tmp->car->cons->cdr);
+        freeData (tmp->car->cons->car);
+        freeConsCell (tmp->car->cons);
+        freeData (tmp->car);
+        freeConsCell (tmp);
+        evalS (d);
+        freeDefinePoolS (i);
+    }
+    return ret;
+}
+bool BI_lambda (struct Data *d) {
+    bool ret = true;
+    struct Data *params = d->cons->car->cons->cdr->car,
+                *body = d->cons->car->cons->cdr->cdr->car,
+                *args = d->cons->cdr->car;
+
     if ((params->typeflag == CONS) &&
-        (body->typeflag == CONS) &&
-        (args->typeflag == CONS)) {
-        i = setDefinePoolS (params, args);
-        if (i == 0) {
-            ret = false;
+        (body->typeflag == CONS)) { 
+        if (args->typeflag == CONS) {
+            ret = BI_lambda_helper (d);
+        } else if ((args->typeflag != NIL) && (d->cons->cdr->cdr != NULL)) {
+            ret = BI_lambda_helper2 (d);
         } else {
-            tmp = d->cons;
-            d->cons = body->cons;
-            freeConsCell (tmp->cdr);
-            freeConsCell (tmp->car->cons->cdr->cdr);
-            freeConsCell (tmp->car->cons->cdr);
-            freeData (tmp->car->cons->car);
-            freeConsCell (tmp->car->cons);
-            freeData (tmp->car);
-            freeConsCell (tmp);
-            evalS (d);
-            freeDefinePoolS (i);
         }
     } else {
         ret = false;
