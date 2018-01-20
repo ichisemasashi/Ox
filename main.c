@@ -691,8 +691,14 @@ bool apply (struct Data *d) {
     struct Data *tmpData;
     if (d->typeflag != CONS) {
     } else if (d->cons->car->typeflag != SYMBOL) {
-        printf ("Can't apply this CAR.\n");
-        ret = false;
+        if ((d->cons->car->typeflag == CONS) && 
+            ((compString (d->cons->car->cons->car->char_data, "lambda") == true) ||
+             (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
+            spForm (d);
+        } else {
+            printf ("Can't apply this CAR.\n");
+            ret = false;
+        }
     } else if ((func = findFunction(d->cons->car)) != NULL) {
         ret = func (d);
     } else {
@@ -731,8 +737,8 @@ bool evalEach (struct Data *d) {
         (compString (s, "DEFINE") == true)) {
         ret = eval_co_each(d->cons->cdr->cdr);
     } else if ((d->cons->car->typeflag == CONS) &&
-                 ((compString (s, "lambda") == true) ||
-                  (compString (s, "LAMBDA") == true))) {
+                 ((compString (d->cons->car->cons->car->char_data, "lambda") == true) ||
+                  (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
     } else if ((compString (s, "quote") == true) ||
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
