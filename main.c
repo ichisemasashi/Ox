@@ -1250,7 +1250,36 @@ bool BI_define (struct Data *d) {
     return ret;
 }
 bool BI_lambda (struct Data *d) {
-    return true;
+    bool ret = true;
+    int i;
+    struct Data *params = d->cons->car->cons->cdr->car,
+                *body = d->cons->car->cons->cdr->cdr->car,
+                *args = d->cons->cdr->car;
+    struct Cons *tmp;
+
+    if ((params->typeflag == CONS) &&
+        (body->typeflag == CONS) &&
+        (args->typeflag == CONS)) {
+        i = setDefinePoolS (params, args);
+        if (i == 0) {
+            ret = false;
+        } else {
+            tmp = d->cons;
+            d->cons = body->cons;
+            freeConsCell (tmp->cdr);
+            freeConsCell (tmp->car->cons->cdr->cdr);
+            freeConsCell (tmp->car->cons->cdr);
+            freeData (tmp->car->cons->car);
+            freeConsCell (tmp->car->cons);
+            freeData (tmp->car);
+            freeConsCell (tmp);
+            evalS (d);
+            freeDefinePoolS (i);
+        }
+    } else {
+        ret = false;
+    }
+    return ret;
 }
 bool BI_loop (struct Data *d) {
     return true;
@@ -1342,7 +1371,7 @@ bool BI_cons (struct Data *d) {
 int setDefinePoolS (struct Data *k, struct Data *v){
     int ret = 0;
     struct Cons *nk = k->cons, *nv = v->cons, *tmp1, *tmp2;
-    while ((nk->cdr != NULL) || (nk->car->typeflag != NIL)) {
+    while ((nk->cdr != NULL) && (nk->car->typeflag != NIL)) {
         tmp1 = DefinePool->cons;
         tmp2 = nk->cdr;
         DefinePool->cons = nk;
@@ -1357,12 +1386,21 @@ int setDefinePoolS (struct Data *k, struct Data *v){
         ret = 0;
     } else if ((nk != NULL) && (nv == NULL)) {
         ret = 0;
+    } else {
+        freeData (k);
+        freeData (v);
+        freeConsCells(nk);
+        freeConsCells(nv);
     }
     return ret;
 }
 void freeDefinePoolS (int size) {
     int i;
+    struct Cons *tmp;
     for (i=0;i<=size;i++) {
+        tmp = DefinePool->cons;
         DefinePool->cons = DefinePool->cons->cdr->cdr;
+        tmp->cdr->cdr = NULL;
+        freeConsCells (tmp);
     }
 }
