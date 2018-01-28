@@ -1322,19 +1322,24 @@ bool BI_lambda_helper2 (struct Data *d) {
     }
     args = &Datas[i];
     args->typeflag = CONS;
+    tmp = d->cons->cdr->cdr;
     args->cons = d->cons->cdr;
 
+    if ((i = getConsCell ()) == MAXBUF) {
+        return false;
+    }
+    d->cons->cdr = &ConsCells[i];
     d->cons->cdr->car = args;
     if ((i = getConsCell ()) == MAXBUF) {
         return false;
     }
     d->cons->cdr->cdr = &ConsCells[i];
-    d->cons->cdr->cdr->cdr = NULL;
     if ((i = getData ()) == MAXBUF) {
         return false;
     }
     d->cons->cdr->cdr->car = &Datas[i];
     d->cons->cdr->cdr->car->typeflag = NIL;
+    d->cons->cdr->cdr->cdr = NULL;
 
     ret = BI_lambda_helper (d);
     return ret;
