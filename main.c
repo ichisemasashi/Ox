@@ -1479,7 +1479,7 @@ int setDefinePoolS (struct Data *k, struct Data *v){
 void freeDefinePoolS (int size) {
     int i;
     struct Cons *tmp;
-    for (i=0;i<=size;i++) {
+    for (i=0;i<size;i++) {
         tmp = DefinePool->cons;
         DefinePool->cons = DefinePool->cons->cdr->cdr;
         tmp->cdr->cdr = NULL;
