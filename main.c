@@ -1324,22 +1324,19 @@ bool BI_lambda_helper2 (struct Data *d) {
     args->typeflag = CONS;
     args->cons = d->cons->cdr;
 
-    i = setDefinePoolS (params, args);
-    if (i == 0) {
-        ret = false;
-    } else {
-        tmp = d->cons;
-        d->cons = body->cons;
-        freeConsCell (tmp->cdr);
-        freeConsCell (tmp->car->cons->cdr->cdr);
-        freeConsCell (tmp->car->cons->cdr);
-        freeData (tmp->car->cons->car);
-        freeConsCell (tmp->car->cons);
-        freeData (tmp->car);
-        freeConsCell (tmp);
-        evalS (d);
-        freeDefinePoolS (i);
+    d->cons->cdr->car = args;
+    if ((i = getConsCell ()) == MAXBUF) {
+        return false;
     }
+    d->cons->cdr->cdr = &ConsCells[i];
+    d->cons->cdr->cdr->cdr = NULL;
+    if ((i = getData ()) == MAXBUF) {
+        return false;
+    }
+    d->cons->cdr->cdr->car = &Datas[i];
+    d->cons->cdr->cdr->car->typeflag = NIL;
+
+    ret = BI_lambda_helper (d);
     return ret;
 }
 bool BI_lambda (struct Data *d) {
