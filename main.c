@@ -90,6 +90,9 @@ bool BI_cons (struct Data *d);
 int setDefinePoolS (struct Data *, struct Data *);
 void freeDefinePoolS (int);
 bool copyConsData (struct Data *, struct Data *);
+bool BI_minus (struct Data *);
+bool BI_minus_float (struct Data *);
+bool BI_minus_int (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -100,6 +103,7 @@ struct functionName{
     "car", BI_car,
     "cdr", BI_cdr,
     "cons", BI_cons,
+    "-", BI_minus,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1485,4 +1489,70 @@ void freeDefinePoolS (int size) {
         tmp->cdr->cdr = NULL;
         freeConsCells (tmp);
     }
+}
+bool BI_minus_float (struct Data *d) {
+    bool ret = true;
+    float ret_float;
+    struct Cons *args = d->cons->cdr;
+
+    if (args->car->typeflag == FLOAT) {
+        ret_float = args->car->float_data;
+    } else {
+        ret_float = (float)args->car->int_data;
+    }
+    args = args->cdr;
+
+    while (args->cdr != NULL) {
+        if (args->car->typeflag == FLOAT) {
+            ret_float -= args->car->float_data;
+        } else {
+            ret_float -= (float)args->car->float_data;
+        }
+        args = args->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = FLOAT;
+    d->float_data = ret_float;
+    d->cons = NULL;
+    return ret;
+}
+bool BI_minus_int (struct Data *d) {
+    bool ret = true;
+    struct Cons *args = d->cons->cdr;
+    int ret_int = args->car->int_data;
+
+    args = args->cdr;
+
+    while (args->cdr != NULL) {
+        ret_int -= args->car->int_data;
+        args = args->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = INT;
+    d->int_data = ret_int;
+    d->cons = NULL;
+    return ret;
+}
+
+bool BI_minus (struct Data *d) {
+    bool ret = true, isfloat = false;
+    struct Cons *args = d->cons->cdr;
+
+    /* all int or not */
+    while (args->cdr != NULL) {
+        if (args->car->typeflag == FLOAT) {
+            isfloat = true;
+            break;
+        }
+        args = args->cdr;
+    }
+
+    if (isfloat == true) {
+        ret = BI_minus_float (d);
+    } else {
+        ret = BI_minus_int(d);
+    }
+    return ret;
 }
