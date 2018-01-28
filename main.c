@@ -84,6 +84,8 @@ void freeData (struct Data *);
 bool equalS (struct Data *a, struct Data *b);
 void mystrcpy (char *from, char *to);
 bool printAtom (struct Data *d);
+bool printAtom_withoutFree (struct Data *);
+bool printS_withoutFree (struct Data *);
 bool BI_cons (struct Data *d);
 int setDefinePoolS (struct Data *, struct Data *);
 void freeDefinePoolS (int);
@@ -909,6 +911,23 @@ bool myEval () {
     return ret;
 }
 
+bool printS_withoutFree (struct Data *d) {
+    struct Cons *n = d->cons;
+
+    printf ("(");
+    while (n->cdr != NULL) {
+        if (n != d->cons) {
+            printf (" ");
+        }
+        if (n->car->typeflag == CONS) {
+            printS_withoutFree(n->car);
+        }
+        printAtom_withoutFree (n->car);
+        n = n->cdr;
+    }
+    printf (")");
+    return true;
+}
 bool printS (struct Data *d) {
     struct Cons *n = d->cons;
 
@@ -918,9 +937,9 @@ bool printS (struct Data *d) {
             printf (" ");
         }
         if (n->car->typeflag == CONS) {
-            printS(n->car);
+            printS_withoutFree(n->car);
         }
-        printAtom (n->car);
+        printAtom_withoutFree (n->car);
         n = n->cdr;
     }
     printf (")");
@@ -928,7 +947,7 @@ bool printS (struct Data *d) {
     freeData (d);
     return true;
 }
-bool printAtom (struct Data *d) {
+bool printAtom_withoutFree (struct Data *d) {
     if (d->typeflag == INT) {
         printf ("%d",d->int_data);
     } else if (d->typeflag == FLOAT) {
@@ -946,6 +965,10 @@ bool printAtom (struct Data *d) {
             printf ("FALSE");
         }
     }
+    return true;
+}
+bool printAtom (struct Data *d) {
+    printAtom_withoutFree (d);
     freeData (d);
     return true;
 }
