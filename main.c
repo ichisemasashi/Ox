@@ -787,6 +787,12 @@ bool evalEach (struct Data *d) {
         ret = eval_co_each(d->cons);
     } else if ((compString (s, "load") == true) ||
                (compString (s, "LOAD") == true)) {
+    } else if ((compString (s, "set") == true) ||
+               (compString (s, "SET") == true)) {
+        ret = eval_co_each(d->cons->cdr->cdr);
+        if (ret == false) {
+            return ret;
+        }
     } else {
         ret = eval_co_each(d->cons);
     }
@@ -1629,7 +1635,10 @@ bool BI_set (struct Data *d) {
         while ((c->cdr != NULL) && (c->car->typeflag != NIL)) {
             if ((c->car->typeflag == SYMBOL) && (compString(k->char_data,c->car->char_data) == true)) {
                 ret = true;
-                copyData (v,c->car);
+                copyData (v, c->cdr->car);
+                c = d->cons;
+                copyData (k, d);
+                freeConsCells (c);
                 break;
             }
             c = c->cdr->cdr;
