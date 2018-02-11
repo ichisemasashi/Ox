@@ -93,6 +93,10 @@ bool copyConsData (struct Data *, struct Data *);
 bool BI_minus (struct Data *);
 bool BI_minus_float (struct Data *);
 bool BI_minus_int (struct Data *);
+bool BI_mult (struct Data *);
+bool BI_mult_int (struct Data *);
+bool BI_mult_float (struct Data *);
+bool BI_set (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -104,6 +108,7 @@ struct functionName{
     "cdr", BI_cdr,
     "cons", BI_cons,
     "-", BI_minus,
+    "*", BI_mult,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -690,6 +695,10 @@ bool spForm (struct Data *d) {
                ((ret = compString (car, "LOAD")) == true)) {
         /* load */
         ret = BI_load (d);
+    } else if (((ret = compString (car, "set")) == true) ||
+               ((ret = compString (car, "SET")) == true)) {
+        /* set */
+        ret = BI_set (d);
     }
     return ret;
 }
@@ -1553,6 +1562,78 @@ bool BI_minus (struct Data *d) {
         ret = BI_minus_float (d);
     } else {
         ret = BI_minus_int(d);
+    }
+    return ret;
+}
+bool BI_mult_float (struct Data *d) {
+    bool ret = true;
+    float result = 1.0;
+    struct Cons * args = d->cons->cdr;
+
+    while (args->cdr != NULL) {
+        if (args->car->typeflag == FLOAT) {
+            result *= args->car->float_data;
+        } else {
+            result *= (float)args->car->int_data;
+        }
+        args = args->cdr;
+    }
+    freeConsCells (d->cons);
+    d->typeflag = FLOAT;
+    d->float_data = result;
+    d->cons = NULL;
+    return ret;
+}
+bool BI_mult_int (struct Data *d) {
+    bool ret = true;;
+    int result = 1;
+    struct Cons *args = d->cons->cdr;
+
+    while (args->cdr != NULL) {
+        result = result * (args->car->int_data);
+        args = args->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = INT;
+    d->int_data = result;
+    d->cons = NULL;
+    return ret;
+}
+bool BI_mult (struct Data *d) {
+    bool ret = true, isfloat = false;
+    struct Cons *args = d->cons->cdr;
+    while (args->cdr != NULL) {
+        if (args->car->typeflag == FLOAT) {
+            isfloat = true;
+            break;
+        }
+        args = args->cdr;
+    }
+    if (isfloat == true) {
+        ret = BI_mult_float (d);
+    } else {
+        ret = BI_mult_int (d);
+    }
+    return ret;
+}
+bool BI_set (struct Data *d) {
+    bool ret = false;
+    struct Data *k = d->cons->cdr->car,
+                *v = d->cons->cdr->cdr->car;
+    struct Cons *c = DefinePool->cons;
+
+    if (v->typeflag == CONS) {
+        ;
+    } else {
+        while ((c->cdr != NULL) && (c->car->typeflag != NIL)) {
+            if ((c->car->typeflag == SYMBOL) && (compString(k->char_data,c->car->char_data) == true)) {
+                ret = true;
+                copyData (v,c->car);
+                break;
+            }
+            c = c->cdr->cdr;
+        }
     }
     return ret;
 }
