@@ -7,7 +7,6 @@
 #define MAXSTRINGS 20
 
 static int buf[MAXBUF];
-static int memBuf[MAXBUF];
 static struct memory {
     int* symbol;
     int* val;
@@ -151,27 +150,24 @@ void putCells (struct Data* p) {
 }
 
 int getBuf (int s[], int limit) {
-    int c,i,ps,pe;
-    for (i=0,ps=0,pe=0;(i<limit) && ((c=getchar())!=EOF) ;i++) {
-        s[i] = c;
+    int c,i,paren = 0;
+    for (i=0;(i<limit) && ((c=getchar())!=EOF) ;i++) {
+        if ((c == '\n') || (c == '\t')) {
+            s[i]  = ' ';
+	} else {
+            s[i] = c;
+	}
         if (c == '(') { /* ( */
-            if ((pe < ps) || (ps == 0 && ps == pe)) {
-                ps++;
-            } else {
-                i = limit;
-                break;
-            }
+            paren++;
         } else if (c == ')') { /* ) */
-            if ((pe < ps) || (pe == 0 && pe == ps)) {
-                pe++;
-            } else {
-                i = limit;
-                break;
+            paren--;
+            if (paren == 0) {
+            	break;
             }
         } else if (c == '\n') {
-            if (ps == pe) {
-                break;
-            }
+		if (paren == 0) {
+			break;
+		}
         }
     }
     s[i] = '\0';
