@@ -331,8 +331,20 @@ int read_from(FILE *f, unsigned char *out, int sz) {
   return ret;
 }
 int make_cons_from_parce_strings(unsigned char *str, int size) {
-  int i, ret = NG;
+  int i = 0, ret = NG;
+  struct cons_cell *cons_p;
+  struct cell *cell_p;
 
+  while (str[i] != 0x00) {
+    if (str[i] == '(') {
+      ret = get_cons_cell();
+      if (ret == NG) {
+        printf("[DBG] get_cons_cell NG.\n");
+        break;
+      }
+    }
+    i++;
+  }
   return ret;
 }
 int my_sizeof(unsigned char *p) {
