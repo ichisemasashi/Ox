@@ -330,6 +330,26 @@ int read_from(FILE *f, unsigned char *out, int sz) {
   }
   return ret;
 }
+int make_cons_cells_list(struct cell *parent, unsigned char *str) {
+  int ret = NG, i = 0;
+  struct cons_cell *p;
+
+  ret = get_cons_cell(&p);
+  if (ret == NG) {
+    printf("[DBG] make_cons_cells_list() get_cons_cell NG.\n");
+    return ret;
+  }
+  parent->kind = CONS_CELL;
+  parent->value = p;
+  i++;
+  i += skip_spaces(str);
+
+  while((str[i] != 0x00) && (str[i] != ')')) {
+    
+  }
+
+  return ret;
+}
 int make_cons_from_parce_strings(unsigned char *str, int size) {
   int i = 0, ret = NG;
   struct cons_cell *cons_p;
@@ -337,11 +357,7 @@ int make_cons_from_parce_strings(unsigned char *str, int size) {
 
   while (str[i] != 0x00) {
     if (str[i] == '(') {
-      ret = get_cons_cell();
-      if (ret == NG) {
-        printf("[DBG] get_cons_cell NG.\n");
-        break;
-      }
+      ret = make_cons_cells_list(&my_cell, str);
     }
     i++;
   }
