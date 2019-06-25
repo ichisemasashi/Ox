@@ -161,9 +161,6 @@ int getBuf (int s[], int limit) {
             paren++;
         } else if (c == ')') { /* ) */
             paren--;
-            if (paren == 0) {
-            	break;
-            }
         } else if (c == '\n') {
 		if (paren == 0) {
 			break;
