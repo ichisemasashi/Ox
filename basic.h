@@ -93,7 +93,7 @@ int is_parce_int(unsigned char *, int);
 int is_parce_float(unsigned char *, int);
 
 int make_cons_from_parce_strings(unsigned char *, int);
-int make_cells_from_parce_strings(unsigned char *, int);
+int make_cells_from_parce_strings(struct cell *, unsigned char *);
 int my_read();
 int my_eval();
 int eval_cons(struct cell *, struct cell *);

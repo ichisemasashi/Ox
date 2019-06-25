@@ -332,22 +332,55 @@ int read_from(FILE *f, unsigned char *out, int sz) {
 }
 int make_cons_cells_list(struct cell *parent, unsigned char *str) {
   int ret = NG, i = 0;
-  struct cons_cell *p;
+  struct cons_cell *p, *n;
+  struct cell *c_p;
 
   ret = get_cons_cell(&p);
   if (ret == NG) {
     printf("[DBG] make_cons_cells_list() get_cons_cell NG.\n");
+    free_cell(parent);
     return ret;
   }
   parent->kind = CONS_CELL;
   parent->value = p;
   i++;
-  i += skip_spaces(str);
 
   while((str[i] != 0x00) && (str[i] != ')')) {
-    
+    i += skip_spaces(str);
+    if (str[i] == '(') {
+      ret = get_cell(&c_p);
+      if (ret == NG) {
+        free_cell(parent);
+        return NG;
+      }
+      ret = make_cons_cells_list(c_p, &(str[i+1]));
+    } else {
+      ret = get_cell(&c_p);
+      if (ret == NG) {
+        free_cell(parent);
+        return ret;
+      }
+      ret = make_cells_from_parce_strings(c_p, &(str[i]));
+      if (ret == NG) {
+        free_cell(parent);
+        return ret;
+      }
+      p->car = c_p;
+      ret = get_cons_cell(&n);
+      if (ret == NG) {
+        free_cell(parent);
+        return NG;
+      }
+      p->cdr = n;
+      p = n;
+      i += my_sizeof(&(str[i]));
+    }
   }
 
+  /* )の場合  */
+  if (str[i] == ')') {
+    p->cdr = NULL;
+  }
   return ret;
 }
 int make_cons_from_parce_strings(unsigned char *str, int size) {
@@ -476,7 +509,7 @@ double  my_atod(unsigned char *s, int size) {
   return d;
 }
 
-int make_cells_from_parce_strings(unsigned char *str, int size) {
+int make_cells_from_parce_strings(struct cell *cell_p, unsigned char *str) {
   int i,c ,sz , ret = NG;
   double f;
 
@@ -484,39 +517,39 @@ int make_cells_from_parce_strings(unsigned char *str, int size) {
   if (STR_BUF_SIZE < sz) {
     ret = NG;
   }  else {
-    my_cell.gc = use;
+    cell_p->gc = use;
     if ((sz == 3) &&
         ((strncmp((char *)str, "NIL", 3) == 0) ||
          (strncmp((char *)str, "nil", 3) == 0))) {
       /* NIL */
-      set_prime_nil(&my_cell);
+      set_prime_nil(cell_p);
       ret = OK;
     } else if ((sz == 5) &&
                ((strncmp((char *)str, "FALSE", 5) == 0) ||
                 (strncmp((char *)str, "false", 5) == 0))) {
       /* BOOL(FALSE) */
-      ret = set_prime_bool(&my_cell, FALSE);
+      ret = set_prime_bool(cell_p, FALSE);
     } else if ((sz == 4) &&
                ((strncmp((char *)str, "TRUE", 4) == 0) ||
                 (strncmp((char *)str, "true", 4) == 0))) {
       /* BOOL(TRUE) */
-      ret = set_prime_bool(&my_cell, TRUE);
+      ret = set_prime_bool(cell_p, TRUE);
     } else if (str[0] == '"') {
       if (str[sz-1] == '"') {
         /* STRINGS */
-        ret = set_prime_strings(&my_cell, str, sz);
+        ret = set_prime_strings(cell_p, str, sz);
       }
     } else if (is_parce_int(str, sz) == OK) {
       /* INT */
       i = my_atoi(str, sz);
-      ret = set_prime_int(&my_cell, i);
+      ret = set_prime_int(cell_p, i);
     } else if (is_parce_float(str, sz) == OK) {
       /* FLOAT */
       f = my_atod(str, sz);
-      ret = set_prime_float(&my_cell, f);
+      ret = set_prime_float(cell_p, f);
     } else {
       /* SYMBOL */
-      ret = set_prime_symbol(&my_cell, str, sz);
+      ret = set_prime_symbol(cell_p, str, sz);
     }
   }
   return ret;
@@ -538,7 +571,7 @@ int parse_input_1_sexp(unsigned char *in, int sz) {
     ret = make_cons_from_parce_strings(&(in[i]), sz);
   } else {
     /* simple symbole or something */
-    ret = make_cells_from_parce_strings(&(in[i]), sz);
+    ret = make_cells_from_parce_strings(&my_cell, &(in[i]));
   }
   return ret;
 }
