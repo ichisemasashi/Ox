@@ -21,6 +21,10 @@ struct cons_cell {
 struct cons_cell Cons_Cell_BUF[Cons_Cell_BUF_SIZE];
 #define STR_BUF_SIZE 256
 
+struct token {
+  unsigned char *tok;
+};
+
 /* ------------------- */
 /* read from stdin     */
 /* ------------------- */
@@ -91,9 +95,8 @@ double my_atod(unsigned char *, int);
 
 int is_parce_int(unsigned char *, int);
 int is_parce_float(unsigned char *, int);
-
-int make_cons_from_parce_strings(unsigned char *, int);
-int make_cells_from_parce_strings(struct cell *, unsigned char *);
+int skip_strings(unsigned char *);
+int to_tokenize(unsigned char *, struct token *);
 int my_read();
 int my_eval();
 int eval_cons(struct cell *, struct cell *);
@@ -104,4 +107,4 @@ void print_cell(struct cell *);
 void print_cons(struct cell *);
 void prompter(char *);
 int read_from(FILE *, unsigned char *, int);
-int parse_input_1_sexp(unsigned char *, int);
+int parse_input_1_sexp(struct token *);

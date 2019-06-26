@@ -330,72 +330,46 @@ int read_from(FILE *f, unsigned char *out, int sz) {
   }
   return ret;
 }
-int make_cons_cells_list(struct cell *parent, unsigned char *str) {
-  int ret = NG, i = 0;
-  struct cons_cell *p, *n;
-  struct cell *c_p;
+int to_tokenize (unsigned char *from, struct token *to) {
+  int ret = OK, i = 0, j = 0;
 
-  ret = get_cons_cell(&p);
-  if (ret == NG) {
-    printf("[DBG] make_cons_cells_list() get_cons_cell NG.\n");
-    free_cell(parent);
-    return ret;
-  }
-  parent->kind = CONS_CELL;
-  parent->value = p;
-  i++;
-
-  while((str[i] != 0x00) && (str[i] != ')')) {
-    i += skip_spaces(str);
-    if (str[i] == '(') {
-      ret = get_cell(&c_p);
-      if (ret == NG) {
-        free_cell(parent);
-        return NG;
-      }
-      ret = make_cons_cells_list(c_p, &(str[i+1]));
+  while (from[i]!= 0x00) {
+    i = skip_spaces(&(from[i]));
+    if (from[i] == '(') {
+      to[j].tok = &(from[i]);
+      j++;
+      i++;
+    } else if (from[i] == ')') {
+      to[j].tok = &(from[i]);
+      i++;
+      j++;
     } else {
-      ret = get_cell(&c_p);
-      if (ret == NG) {
-        free_cell(parent);
-        return ret;
-      }
-      ret = make_cells_from_parce_strings(c_p, &(str[i]));
-      if (ret == NG) {
-        free_cell(parent);
-        return ret;
-      }
-      p->car = c_p;
-      ret = get_cons_cell(&n);
-      if (ret == NG) {
-        free_cell(parent);
-        return NG;
-      }
-      p->cdr = n;
-      p = n;
-      i += my_sizeof(&(str[i]));
+      to[j].tok = &(from[i]);
+      j++;
+      i++;
+      i = skip_strings(&(from[i]));
     }
   }
 
-  /* )の場合  */
-  if (str[i] == ')') {
-    p->cdr = NULL;
-  }
-  return ret;
-}
-int make_cons_from_parce_strings(unsigned char *str, int size) {
-  int i = 0, ret = NG;
-  struct cons_cell *cons_p;
-  struct cell *cell_p;
+  to[j].tok = NULL;
 
-  while (str[i] != 0x00) {
-    if (str[i] == '(') {
-      ret = make_cons_cells_list(&my_cell, str);
-    }
-    i++;
-  }
   return ret;
 }
+int skip_strings(unsigned char *p) {
+  int i;
+  for (i=0;p[i]!= 0x00;i++) {
+    if (p[i] == '(') {
+      break;
+    } else if (p[i] == ')') {
+      break;
+    } else if(isspace(p[i])) {
+      i--;
+      break;
+    }
+  }
+  return i;
+}
+
 int my_sizeof(unsigned char *p) {
   int i;
   for(i=0;*p != 0x00;i++,p++) {
@@ -509,51 +483,6 @@ double  my_atod(unsigned char *s, int size) {
   return d;
 }
 
-int make_cells_from_parce_strings(struct cell *cell_p, unsigned char *str) {
-  int i,c ,sz , ret = NG;
-  double f;
-
-  sz = my_sizeof(str);
-  if (STR_BUF_SIZE < sz) {
-    ret = NG;
-  }  else {
-    cell_p->gc = use;
-    if ((sz == 3) &&
-        ((strncmp((char *)str, "NIL", 3) == 0) ||
-         (strncmp((char *)str, "nil", 3) == 0))) {
-      /* NIL */
-      set_prime_nil(cell_p);
-      ret = OK;
-    } else if ((sz == 5) &&
-               ((strncmp((char *)str, "FALSE", 5) == 0) ||
-                (strncmp((char *)str, "false", 5) == 0))) {
-      /* BOOL(FALSE) */
-      ret = set_prime_bool(cell_p, FALSE);
-    } else if ((sz == 4) &&
-               ((strncmp((char *)str, "TRUE", 4) == 0) ||
-                (strncmp((char *)str, "true", 4) == 0))) {
-      /* BOOL(TRUE) */
-      ret = set_prime_bool(cell_p, TRUE);
-    } else if (str[0] == '"') {
-      if (str[sz-1] == '"') {
-        /* STRINGS */
-        ret = set_prime_strings(cell_p, str, sz);
-      }
-    } else if (is_parce_int(str, sz) == OK) {
-      /* INT */
-      i = my_atoi(str, sz);
-      ret = set_prime_int(cell_p, i);
-    } else if (is_parce_float(str, sz) == OK) {
-      /* FLOAT */
-      f = my_atod(str, sz);
-      ret = set_prime_float(cell_p, f);
-    } else {
-      /* SYMBOL */
-      ret = set_prime_symbol(cell_p, str, sz);
-    }
-  }
-  return ret;
-}
 int skip_spaces(unsigned char *p) {
   int i;
   for (i=0;(*p!=0x00) && (isspace(p[i]));i++) {
@@ -561,17 +490,13 @@ int skip_spaces(unsigned char *p) {
   return i;
 }
 
-int parse_input_1_sexp(unsigned char *in, int sz) {
+int parse_input_1_sexp(struct token *p) {
   int ret = NG, i=0;
 
-  i = skip_spaces(in);
-
-  if (in[i] == '(') {
+  if (p[i].tok[0] == '(') {
     /* paren start */
-    ret = make_cons_from_parce_strings(&(in[i]), sz);
   } else {
     /* simple symbole or something */
-    ret = make_cells_from_parce_strings(&my_cell, &(in[i]));
   }
   return ret;
 }
@@ -644,6 +569,7 @@ int eval_cons(struct cell *p, struct cell *result) {
 int my_read() {
   int ret, size;
   unsigned char InputBuf[4096];
+  struct token Tokens[4096];
 
   size = sizeof(InputBuf)/sizeof(unsigned char);
   prompter("Lisp >");
@@ -651,7 +577,11 @@ int my_read() {
   if (ret == NG) {
     return NG;
   }
-  ret = parse_input_1_sexp(InputBuf, size);
+  ret = to_tokenize(InputBuf, Tokens);
+  if (ret == NG) {
+    return NG;
+  }
+  ret = parse_input_1_sexp(Tokens);
   return ret;
 
 }
