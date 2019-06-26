@@ -331,23 +331,30 @@ int read_from(FILE *f, unsigned char *out, int sz) {
   return ret;
 }
 int to_tokenize (unsigned char *from, struct token *to) {
-  int ret = OK, i = 0, j = 0;
+  int ret = OK, i = 0, j = 0, paren = 0;
 
   while (from[i]!= 0x00) {
-    i = skip_spaces(&(from[i]));
-    if (from[i] == '(') {
+    /* i += skip_spaces(&(from[i])); */
+    if (isspace((int)(from[i]))) {
+      i++;
+    } else if (from[i] == '(') {
+      paren++;
       to[j].tok = &(from[i]);
       j++;
       i++;
     } else if (from[i] == ')') {
       to[j].tok = &(from[i]);
-      i++;
+      paren--;
       j++;
+      if (paren == 0) {
+        break;
+      }
+      i++;
     } else {
       to[j].tok = &(from[i]);
       j++;
       i++;
-      i = skip_strings(&(from[i]));
+      i += skip_strings(&(from[i]));
     }
   }
 
@@ -363,7 +370,6 @@ int skip_strings(unsigned char *p) {
     } else if (p[i] == ')') {
       break;
     } else if(isspace(p[i])) {
-      i--;
       break;
     }
   }
@@ -567,7 +573,7 @@ int eval_cons(struct cell *p, struct cell *result) {
 }
 
 int my_read() {
-  int ret, size;
+  int ret, size, i;
   unsigned char InputBuf[4096];
   struct token Tokens[4096];
 
