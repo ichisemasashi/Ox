@@ -71,6 +71,10 @@ bool BI_lambda (struct Data *);
 bool BI_loop (struct Data *);
 bool BI_load (struct Data *);
 bool BI_equal (struct Data *);
+bool BI_less_than (struct Data *);
+bool BI_greater_than (struct Data *);
+bool BI_less_equal (struct Data *);
+bool BI_greater_equal (struct Data *);
 bool BI_quote (struct Data *);
 bool BI_car (struct Data *);
 bool BI_cdr (struct Data *);
@@ -103,6 +107,10 @@ struct functionName{
 } BIfunc[] = {
     "+", BI_Plus,
     "=", BI_equal,
+    "<", BI_less_than,
+    ">", BI_greater_than,
+    "<=", BI_less_equal,
+    ">=", BI_greater_equal,
     "car", BI_car,
     "cdr", BI_cdr,
     "cons", BI_cons,
@@ -1191,6 +1199,234 @@ bool BI_equal (struct Data *d) {
             break;
         }
 
+        n = nn;
+        nn = nn->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = BOOL;
+    d->cons = NULL;
+    if (ret == true) {
+        d->bool = true;
+    } else {
+        d->bool = false;
+    }
+    return true;
+}
+bool BI_less_than(struct Data *d) {
+/*      <      <a1>    <a2> .... NIL
+  *d -> [][] -> [][] -> [][]...-> [][]
+*/
+    bool ret = true;
+    struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
+    struct Data *tmp;
+
+    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+        if (n->car->typeflag == INT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->int_data >= nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->int_data >= nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else if (n->car->typeflag == FLOAT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->float_data >= nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->float_data >= nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else {
+            ret = false;
+            break;
+        }
+        n = nn;
+        nn = nn->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = BOOL;
+    d->cons = NULL;
+    if (ret == true) {
+        d->bool = true;
+    } else {
+        d->bool = false;
+    }
+    return true;
+}
+bool BI_greater_than(struct Data *d) {
+/*      >      <a1>    <a2> .... NIL
+  *d -> [][] -> [][] -> [][]...-> [][]
+*/
+    bool ret = true;
+    struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
+    struct Data *tmp;
+
+    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+        if (n->car->typeflag == INT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->int_data <= nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->int_data <= nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else if (n->car->typeflag == FLOAT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->float_data <= nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->float_data <= nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else {
+            ret = false;
+            break;
+        }
+        n = nn;
+        nn = nn->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = BOOL;
+    d->cons = NULL;
+    if (ret == true) {
+        d->bool = true;
+    } else {
+        d->bool = false;
+    }
+    return true;
+}
+bool BI_less_equal(struct Data *d) {
+/*      <=     <a1>    <a2> .... NIL
+  *d -> [][] -> [][] -> [][]...-> [][]
+*/
+    bool ret = true;
+    struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
+    struct Data *tmp;
+
+    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+        if (n->car->typeflag == INT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->int_data > nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->int_data > nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else if (n->car->typeflag == FLOAT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->float_data > nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->float_data > nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else {
+            ret = false;
+            break;
+        }
+        n = nn;
+        nn = nn->cdr;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = BOOL;
+    d->cons = NULL;
+    if (ret == true) {
+        d->bool = true;
+    } else {
+        d->bool = false;
+    }
+    return true;
+}
+bool BI_greater_equal(struct Data *d) {
+/*      >=     <a1>    <a2> .... NIL
+  *d -> [][] -> [][] -> [][]...-> [][]
+*/
+    bool ret = true;
+    struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
+    struct Data *tmp;
+
+    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+        if (n->car->typeflag == INT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->int_data < nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->int_data < nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else if (n->car->typeflag == FLOAT) {
+            if (nn->car->typeflag == INT) {
+                if (n->car->float_data < nn->car->int_data) {
+                    ret = false;
+                    break;
+                }
+            } else if (nn->car->typeflag == FLOAT) {
+                if (n->car->float_data < nn->car->float_data) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                ret = false;
+                break;
+            }
+        } else {
+            ret = false;
+            break;
+        }
         n = nn;
         nn = nn->cdr;
     }
