@@ -65,6 +65,7 @@ int getConsCell();
 bool BI_Plus(struct Data*);
 bool compString (char *, char *);
 bool evalS (struct Data *);
+bool eval_if (struct Data *);
 bool evalAtom (struct Data *);
 bool BI_define (struct Data *);
 bool BI_lambda (struct Data *);
@@ -746,10 +747,58 @@ bool eval_co_each (struct Cons *cons) {
     }
     return ret;
 }
+bool eval_if (struct Data *d) {
+    bool ret = true;
+    struct Cons *tmpCons;
+    struct Data *cond_p, *then_p, *else_p, tmpData;
+
+    cond_p = d->cons->cdr->car;
+    then_p = d->cons->cdr->cdr->car;
+    else_p = d->cons->cdr->cdr->cdr->car;
+
+    ret = evalS(cond_p);
+    if (ret == false) {
+        return false;
+    }
+    if (cond_p->typeflag == BOOL) {
+        if (cond_p->bool == true) {
+            if (then_p->typeflag == CONS) {
+                tmpCons = then_p->cons;
+                then_p->cons = NULL;
+                then_p->typeflag = INT;
+            } else {
+                tmpCons = NULL;
+                copyData (then_p, &tmpData);
+            }
+        } else {
+            if (else_p->typeflag == CONS) {
+                tmpCons = else_p->cons;
+                else_p->cons = NULL;
+                else_p->typeflag = INT;
+            } else {
+                tmpCons = NULL;
+                copyData (else_p, &tmpData);
+            }
+        }
+        if (tmpCons != NULL) {
+            freeConsCells (d->cons);
+            d->cons = tmpCons;
+            evalS(d);
+        } else {
+            freeConsCells (d->cons);
+            d = &tmpData;
+            evalAtom(d);
+        }
+    }else {
+        ret = false;
+    }
+    return ret;
+}
 bool evalEach (struct Data *d) {
-    bool ret = true;;
+    bool ret = true;
     char * s = d->cons->car->char_data;
     struct Cons *tmpCons;
+    struct Data tmpData;
 
     if ((compString (s, "define") == true) ||
         (compString (s, "DEFINE") == true)) {
@@ -763,26 +812,7 @@ bool evalEach (struct Data *d) {
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
                (compString (s, "IF") == true)) {
-        ret = evalS(d->cons->cdr->car);
-        if (ret == false) {
-            return false;
-        }
-        if (d->cons->cdr->car->typeflag == BOOL) {
-            if (d->cons->cdr->car->bool == true) {
-                tmpCons = d->cons->cdr->cdr->car->cons;
-                d->cons->cdr->cdr->car->cons = NULL;
-                d->cons->cdr->cdr->car->typeflag = INT;
-            } else {
-                tmpCons = d->cons->cdr->cdr->cdr->car->cons;
-                d->cons->cdr->cdr->cdr->car->cons = NULL;
-                d->cons->cdr->cdr->cdr->car->typeflag = INT;
-            }
-            freeConsCells (d->cons);
-            d->cons = tmpCons;
-            evalS(d);
-        }else {
-            ret = false;
-        }
+        ret = eval_if (d);
     } else if ((compString (s, "loop") == true) ||
                (compString (s, "LOOP") == true)) {
         ret = eval_co_each(d->cons);
