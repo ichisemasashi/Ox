@@ -67,6 +67,7 @@ bool compString (char *, char *);
 bool evalS (struct Data *);
 bool eval_if (struct Data *);
 bool evalAtom (struct Data *);
+bool evalEach (struct Data *d);
 bool BI_define (struct Data *);
 bool BI_lambda (struct Data *);
 bool BI_loop (struct Data *);
@@ -769,6 +770,7 @@ bool eval_if (struct Data *d) {
             } else {
                 tmpCons = NULL;
                 copyData (then_p, &tmpData);
+                tmpData.useflag = use;
             }
         } else {
             if (else_p->typeflag == CONS) {
@@ -778,15 +780,16 @@ bool eval_if (struct Data *d) {
             } else {
                 tmpCons = NULL;
                 copyData (else_p, &tmpData);
+                tmpData.useflag = use;
             }
         }
         if (tmpCons != NULL) {
             freeConsCells (d->cons);
             d->cons = tmpCons;
-            evalS(d);
+            evalEach(d);
         } else {
             freeConsCells (d->cons);
-            d = &tmpData;
+            copyData (&tmpData, d);
             evalAtom(d);
         }
     }else {
