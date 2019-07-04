@@ -54,6 +54,7 @@ bool isNumber(struct token*);
 bool isFloat (struct token*);
 bool isString (struct token*);
 bool copyString(struct token *, struct Data *);
+bool copySTRINGS(struct token *, struct Data *);
 int getData ();
 bool isParlen (struct token* );
 bool isParlenEnd(struct token*);
@@ -66,6 +67,7 @@ bool BI_Plus(struct Data*);
 bool compString (char *, char *);
 bool evalS (struct Data *);
 bool eval_if (struct Data *);
+bool eval_cond (struct Data *);
 bool evalAtom (struct Data *);
 bool evalEach (struct Data *d);
 bool BI_define (struct Data *);
@@ -259,7 +261,7 @@ bool readAtom (struct token* in, struct Data *data) {
     } else if (isString(in) == true) {
         data->typeflag = STRING;
         /* printf (" STRING, ");  dbg */
-        result = copyString(in,data);
+        result = copySTRINGS(in,data);
         if (result == false) {
             return false;
         }
@@ -285,6 +287,20 @@ bool copyString(struct token *from, struct Data *to) {
         to->char_data[i] = (char) from->tokenp[i];
     }
 
+    return true;
+}
+bool copySTRINGS(struct token *from, struct Data *to) {
+    int i,j;
+
+    if (from->size >=MAXSTRINGS) {
+        return false;
+    }
+
+    for (j=0,i=1;i<from->size;j++,i++) {
+        to->char_data[j] = (char) from->tokenp[i];
+    }
+
+    to->char_data[j - 1] = 0x00;
     return true;
 }
 struct token * getNextToken(struct token *from) {
@@ -797,6 +813,65 @@ bool eval_if (struct Data *d) {
     }
     return ret;
 }
+bool eval_cond (struct Data *d) {
+    bool ret = false;
+    struct Data *case_p, *cond_p, *then_p, tmpData;
+    struct Cons *tmp_p, *tmpCons;
+
+    tmp_p = d->cons->cdr;
+    while ((tmp_p->car->typeflag != NIL) && (tmp_p->cdr != NULL)) {
+        /* form check */
+        if (tmp_p->car->typeflag != CONS) {
+            break;
+        }
+        /* condition check */
+        cond_p = tmp_p->car->cons->car;
+        then_p = tmp_p->car->cons->cdr->car;
+
+        /* for ELSE */
+        if ((cond_p->typeflag == SYMBOL) &&
+            ((compString (cond_p->char_data, "else") == true) ||
+             (compString (cond_p->char_data, "ELSE") == true))) {
+            ret = true;
+            cond_p->typeflag = BOOL;
+            cond_p->bool = true;
+        } else {
+            ret = evalS(cond_p);
+        }
+        if (ret == false) {
+            break;
+        }
+        if (cond_p->typeflag != BOOL) {
+            break;
+        }
+        if (cond_p->bool == true) {
+            if (then_p->typeflag == CONS) {
+                tmpCons = then_p->cons;
+                then_p->cons = NULL;
+                then_p->typeflag = INT;
+                freeConsCells (d->cons);
+                d->cons = tmpCons;
+                /* eval then_p */
+                evalEach(d);
+                ret = true;
+                break;
+            } else {
+                copyData (then_p, &tmpData);
+                tmpData.useflag = use;
+                freeConsCells (d->cons);
+                copyData (&tmpData, d);
+                /* eval then_p */
+                evalAtom (d);
+                ret = true;
+                break;
+            }
+        }
+
+        tmp_p = tmp_p->cdr;
+    }
+
+    return ret;
+}
 bool evalEach (struct Data *d) {
     bool ret = true;
     char * s = d->cons->car->char_data;
@@ -816,6 +891,9 @@ bool evalEach (struct Data *d) {
     } else if ((compString (s, "if") == true) ||
                (compString (s, "IF") == true)) {
         ret = eval_if (d);
+    } else if ((compString (s, "cond") == true) ||
+               (compString (s, "COND") == true)) {
+        ret = eval_cond (d);
     } else if ((compString (s, "loop") == true) ||
                (compString (s, "LOOP") == true)) {
         ret = eval_co_each(d->cons);
@@ -1648,6 +1726,20 @@ bool BI_loop (struct Data *d) {
     return true;
 }
 bool BI_load (struct Data *d) {
+    char * file_name;
+    FILE * fd;
+
+    if (d->cons->cdr->car->typeflag == STRING) {
+        file_name = d->cons->cdr->car->char_data;
+        fd = fopen(file_name, "r");
+        if (fd == NULL) {
+            printf("file open NG.\n");
+            return false;
+        }
+    } else {
+        return false;
+    }
+    fclose(fd);
     return true;
 }
 bool BI_quote (struct Data *d) {
