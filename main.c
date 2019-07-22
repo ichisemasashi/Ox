@@ -68,6 +68,7 @@ bool compString (char *, char *);
 bool evalS (struct Data *);
 bool eval_if (struct Data *);
 bool eval_cond (struct Data *);
+bool eval_progn (struct Data *);
 bool evalAtom (struct Data *);
 bool evalEach (struct Data *d);
 bool BI_define (struct Data *);
@@ -905,6 +906,9 @@ bool evalEach (struct Data *d) {
         if (ret == false) {
             return ret;
         }
+    } else if ((compString (s, "progn") == true) ||
+               (compString (s, "PROGN") == true)) {
+        ret = eval_progn (d);
     } else {
         ret = eval_co_each(d->cons);
     }
@@ -1123,12 +1127,12 @@ bool myPrint () {
 }
 int main () {
     bool ret;
-    printf("my version lispy...\n");
+    printf("my version lisp...\n");
     initCells();
     initDefinePood();
 
     while (1) {
-        printf ("Lispy > ");
+        printf ("Lisp > ");
         ret = myRead();
         if (ret != true) {
             printf("READ ERROR!!!!\n");
@@ -1736,6 +1740,7 @@ bool BI_load (struct Data *d) {
             printf("file open NG.\n");
             return false;
         }
+        printf("Now implementing...\n");
     } else {
         return false;
     }
@@ -2000,3 +2005,20 @@ bool BI_set (struct Data *d) {
     }
     return ret;
 }
+bool eval_progn (struct Data *d) {
+    bool ret = true;
+    /*   <p1>  <p2>  NIL
+      d->[][]->[][]->[][]
+     */
+    struct Cons *p = d->cons->cdr;
+
+    while (1) {
+        if ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
+            break;
+        }
+        eval_co_each (p);
+        p = p->cdr;
+    }
+    return ret;
+}
+
