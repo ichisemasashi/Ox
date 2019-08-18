@@ -69,6 +69,9 @@ bool evalS (struct Data *);
 bool eval_if (struct Data *);
 bool eval_cond (struct Data *);
 bool eval_progn (struct Data *);
+bool eval_let (struct Data *);
+int eval_let_helper_set_DefinePools(struct Data *);
+void eval_let_helper_free_DefinePools(int );
 bool evalAtom (struct Data *);
 bool evalEach (struct Data *d);
 bool BI_define (struct Data *);
@@ -909,6 +912,9 @@ bool evalEach (struct Data *d) {
     } else if ((compString (s, "progn") == true) ||
                (compString (s, "PROGN") == true)) {
         ret = eval_progn (d);
+    } else if ((compString (s, "let") == true) ||
+               (compString (s, "let") == true)) {
+        ret = eval_let (d);
     } else {
         ret = eval_co_each(d->cons);
     }
@@ -2011,14 +2017,88 @@ bool eval_progn (struct Data *d) {
       d->[][]->[][]->[][]
      */
     struct Cons *p = d->cons->cdr;
+    struct Cons *tmp;
+    struct Data c;
+    copyData (d, &c);
 
-    while (1) {
-        if ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
-            break;
+    while ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
+        if (p->car->typeflag == CONS) {
+            evalEach (p->car);
+        } else {
+            evalAtom (p->car);
         }
-        eval_co_each (p);
+        tmp = p;
         p = p->cdr;
     }
+    if (tmp->car->typeflag == CONS) {
+        d->cons = tmp->car->cons;
+        tmp->car->typeflag = INT;
+        tmp->car->cons = NULL;
+    } else {
+        copyData (tmp->car, d);
+    }
+    freeConsCells (c.cons);
+    return ret;
+}
+int eval_let_helper_set_DefinePools(struct Data *d) {
+    struct Cons *p = d->cons, *tmp;
+    int ret = 0;
+
+    while ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
+        tmp = DefinePool->cons;
+        DefinePool->cons = p->car->cons;
+        freeConsCells(p->car->cons->cdr->cdr);
+        p->car->cons = NULL;
+        p->car->typeflag = INT;
+        DefinePool->cons->cdr->cdr = tmp;
+        p = p->cdr;
+        ret++;
+    }
+    return ret;
+}
+void eval_let_helper_free_DefinePools(int i) {
+    freeDefinePoolS (i);
+}
+bool eval_let (struct Data *d) {
+    bool ret = true;
+    int i;
+    struct Data *let = d->cons->cdr->car;
+    struct Data *body = d->cons->cdr->cdr->car;
+
+    /* set DefinePools */
+    i = eval_let_helper_set_DefinePools(let);
+
+    /* eval body */
+    if (body->typeflag == CONS) {
+        ret = evalS(body);
+        if (ret == false) {
+            return false;
+        }
+    } else {
+        ret = evalAtom(body);
+        if (ret == false) {
+            return false;
+        }
+    }
+    if (body->typeflag == CONS) {
+        ret = evalS(body);
+        if (ret == false) {
+            return false;
+        }
+    } else {
+        ret = evalAtom(body);
+        if (ret == false) {
+            return false;
+        }
+    }
+
+    /* free DefinePools */
+    eval_let_helper_free_DefinePools(i);
+
+    /* free data and set body to *d */
+    d->cons->cdr->cdr->car = NULL;
+    freeConsCells(d->cons);
+    copyData (body, d);
     return ret;
 }
 
