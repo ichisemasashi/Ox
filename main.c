@@ -86,6 +86,7 @@ bool BI_greater_equal (struct Data *);
 bool BI_quote (struct Data *);
 bool BI_car (struct Data *);
 bool BI_cdr (struct Data *);
+bool BI_atom (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
 bool initDefinePood();
@@ -124,6 +125,7 @@ struct functionName{
     "cons", BI_cons,
     "-", BI_minus,
     "*", BI_mult,
+    "atom?", BI_atom,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1795,6 +1797,11 @@ bool BI_cdr (struct Data *d) {
         d->cons = d->cons->cdr->car->cons->cdr;
         tmp->cdr->car->cons->cdr = NULL;
         freeConsCells (tmp);
+        if ((d->cons->car->typeflag == NIL) && (d->cons->cdr == NULL)) {
+            /* set NIL */
+            freeConsCell (d->cons);
+            d->typeflag = NIL;
+        }
     } else if (d->cons->cdr->car->typeflag == NIL) {
         tmp = d->cons;
         copyData (d->cons->cdr->car, d);
@@ -1809,6 +1816,20 @@ bool BI_cons (struct Data *d) {
     struct Cons *tmp;
     struct Data *car = d->cons->cdr->car, *cdr = d->cons->cdr->cdr->car;
     bool ret = true;
+
+    /* parameter chech */
+    if ((cdr->typeflag == NIL) && (d->cons->cdr->cdr->cdr == NULL)){
+        /* -- 2 args => OK. */
+    } else {
+        /* -- other => NG. */
+        ret = false;
+        return ret;
+    }
+
+    /* (cons <atom> (list)) => (atom list) */
+    /* (cons (list) (list)) => ((list) list) */
+    /* (cons <atom> NIL) => (atom) */
+    /* (cons (list) NIL) => ((list)) */
 
     if (car->typeflag == CONS) {
         ret = false;
@@ -2101,4 +2122,16 @@ bool eval_let (struct Data *d) {
     copyData (body, d);
     return ret;
 }
-
+bool BI_atom (struct Data *d) {
+    bool ret = true, flag;
+    if (d->cons->cdr->car->typeflag == CONS) {
+        flag = false;
+    } else {
+        flag = true;
+    }
+    freeConsCells (d->cons);
+    d->cons = NULL;
+    d->typeflag = BOOL;
+    d->bool = flag;
+    return ret;
+}
