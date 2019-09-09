@@ -109,6 +109,8 @@ bool BI_mult (struct Data *);
 bool BI_mult_int (struct Data *);
 bool BI_mult_float (struct Data *);
 bool BI_set (struct Data *);
+bool is_atom (struct Data *);
+bool is_list (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -145,7 +147,8 @@ void putToken (struct token *p) {
 }
 void putCells (struct Data* p) {
     struct Cons *n;
-    if (p->typeflag == CONS) {
+    bool f;
+    if ((f = is_list (p)) == true) {
         printf("%d ",p->typeflag);
         n = p->cons;
         while(1){
@@ -153,7 +156,7 @@ void putCells (struct Data* p) {
                 break;
             }
             /* typeflags */
-            if (n->car->typeflag == CONS) {
+            if ((f = is_list (n->car)) == true) {
                 putCells(n->car);
             } else {
                 printf("%d ",n->car->typeflag);
@@ -601,10 +604,11 @@ int getConsCell () {
 }
 void freeConsCells (struct Cons *c) {
     struct Cons *cons = c, *n = c->cdr, *tmp;
+    bool f;
     while (n != NULL) {
         if (cons->car == NULL) {
         } else {
-            if (cons->car->typeflag == CONS) {
+            if ((f = is_list (cons->car)) == true) {
                 freeConsCells (cons->car->cons);
             }
             freeData (cons->car);
@@ -692,14 +696,14 @@ bool (*findFunction (struct Data *d))(struct Data *) {
     return NULL;
 }
 bool spForm (struct Data *d) {
-    bool ret = true;
+    bool ret = true, f;
     char *car = d->cons->car->char_data;
 
     if (((ret = compString (car, "define")) == true) ||
         ((ret = compString (car, "DEFINE")) == true)) {
         /* define */
         ret = BI_define (d);
-    } else if (d->cons->car->typeflag == CONS) {
+    } else if ((f = is_list (d->cons->car)) == true) {
         if (((ret = compString (d->cons->car->cons->car->char_data, "lambda")) == true) ||
                ((ret = compString (d->cons->car->cons->car->char_data, "LAMBDA")) == true)) {
             /* lambda */
@@ -729,11 +733,11 @@ bool spForm (struct Data *d) {
 }
 bool apply (struct Data *d) {
     bool (*func)(struct Data *);
-    bool ret = true;
+    bool ret = true, f;
     struct Data *tmpData;
-    if (d->typeflag != CONS) {
+    if ((f = is_atom (d)) == true) {
     } else if (d->cons->car->typeflag != SYMBOL) {
-        if ((d->cons->car->typeflag == CONS) && 
+        if (((f = is_list (d->cons->car)) == true) && 
             ((compString (d->cons->car->cons->car->char_data, "lambda") == true) ||
              (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
             spForm (d);
@@ -752,10 +756,10 @@ bool apply (struct Data *d) {
 
 bool eval_co_each (struct Cons *cons) {
     int i;
-    bool ret = true;
+    bool ret = true, f;
     struct Cons *n = cons, *tmp;
     while ((n != NULL) && (n->cdr!=NULL)) {
-        if (n->car->typeflag == CONS) {
+        if ((f = is_list (n->car)) == true) {
             ret = evalS (n->car);
             if (ret == false) {
                 break;
@@ -771,7 +775,7 @@ bool eval_co_each (struct Cons *cons) {
     return ret;
 }
 bool eval_if (struct Data *d) {
-    bool ret = true;
+    bool ret = true, f;
     struct Cons *tmpCons;
     struct Data *cond_p, *then_p, *else_p, tmpData;
 
@@ -785,7 +789,7 @@ bool eval_if (struct Data *d) {
     }
     if (cond_p->typeflag == BOOL) {
         if (cond_p->bool == true) {
-            if (then_p->typeflag == CONS) {
+            if ((f = is_list (then_p)) == true) {
                 tmpCons = then_p->cons;
                 then_p->cons = NULL;
                 then_p->typeflag = INT;
@@ -795,7 +799,7 @@ bool eval_if (struct Data *d) {
                 tmpData.useflag = use;
             }
         } else {
-            if (else_p->typeflag == CONS) {
+            if ((f = is_list (else_p)) == true) {
                 tmpCons = else_p->cons;
                 else_p->cons = NULL;
                 else_p->typeflag = INT;
@@ -820,14 +824,14 @@ bool eval_if (struct Data *d) {
     return ret;
 }
 bool eval_cond (struct Data *d) {
-    bool ret = false;
+    bool ret = false, f;
     struct Data *case_p, *cond_p, *then_p, tmpData;
     struct Cons *tmp_p, *tmpCons;
 
     tmp_p = d->cons->cdr;
     while ((tmp_p->car->typeflag != NIL) && (tmp_p->cdr != NULL)) {
         /* form check */
-        if (tmp_p->car->typeflag != CONS) {
+        if ((f = is_list (tmp_p->car)) == false) {
             break;
         }
         /* condition check */
@@ -851,7 +855,7 @@ bool eval_cond (struct Data *d) {
             break;
         }
         if (cond_p->bool == true) {
-            if (then_p->typeflag == CONS) {
+            if ((f = is_list (then_p)) == true) {
                 tmpCons = then_p->cons;
                 then_p->cons = NULL;
                 then_p->typeflag = INT;
@@ -879,7 +883,7 @@ bool eval_cond (struct Data *d) {
     return ret;
 }
 bool evalEach (struct Data *d) {
-    bool ret = true;
+    bool ret = true, f;
     char * s = d->cons->car->char_data;
     struct Cons *tmpCons;
     struct Data tmpData;
@@ -887,7 +891,7 @@ bool evalEach (struct Data *d) {
     if ((compString (s, "define") == true) ||
         (compString (s, "DEFINE") == true)) {
         ret = eval_co_each(d->cons->cdr->cdr);
-    } else if ((d->cons->car->typeflag == CONS) &&
+    } else if (((f = is_list (d->cons->car)) == true) &&
                  ((compString (d->cons->car->cons->car->char_data, "lambda") == true) ||
                   (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
     } else if ((compString (s, "lambda") == true) ||
@@ -955,7 +959,7 @@ void copyData (struct Data *from, struct Data *to) {
 }
 bool copyConsData (struct Data *from, struct Data *to) {
     int i;
-    bool ret = true;
+    bool ret = true, f;
     struct Cons *nf = from->cons, *nt;
     copyData (from, to);
     if ((i = getConsCell ()) == MAXBUF) {
@@ -970,7 +974,7 @@ bool copyConsData (struct Data *from, struct Data *to) {
         }
         nt->car = &Datas[i];
         copyData (nf->car, nt->car);
-        if (nf->car->typeflag == CONS) {
+        if ((f = is_list (nf->car)) == true) {
             if ((ret = copyConsData (nf->car, nt->car)) == false) {
                 break;
             }
@@ -993,13 +997,13 @@ bool copyConsData (struct Data *from, struct Data *to) {
     return ret;
 }
 bool evalSymbol (struct Data *d) {
-    bool (*func)(struct Data *);
+    bool (*func)(struct Data *), f;
     int i;
     struct Data *d_ret;
     bool ret = true;
     if ((d_ret = findSymbol(d)) != NULL) {
         /* defined symbol */
-        if (d_ret->typeflag == CONS) {
+        if ((f = is_list (d_ret)) == true) {
             ret = copyConsData (d_ret, d);
         } else {
             copyData (d_ret, d);
@@ -1037,10 +1041,10 @@ bool evalAtom (struct Data *d) {
 }
 bool myEval () {
     /* index_of_Read_Datas */
-    bool ret = true;
+    bool ret = true, f;
     struct Data *d = &Datas[index_of_Read_Datas];
 
-    if (d->typeflag == CONS) {
+    if ((f = is_list (d)) == true) {
         ret = evalS(d);
         if (ret == false) {
             return false;
@@ -1056,13 +1060,14 @@ bool myEval () {
 
 bool printS_withoutFree (struct Data *d) {
     struct Cons *n = d->cons;
+    bool f;
 
     printf ("(");
     while (n->cdr != NULL) {
         if (n != d->cons) {
             printf (" ");
         }
-        if (n->car->typeflag == CONS) {
+        if ((f = is_list (n->car)) == true) {
             printS_withoutFree(n->car);
         }
         printAtom_withoutFree (n->car);
@@ -1073,13 +1078,14 @@ bool printS_withoutFree (struct Data *d) {
 }
 bool printS (struct Data *d) {
     struct Cons *n = d->cons;
+    bool f;
 
     printf ("(");
     while (n->cdr != NULL) {
         if (n != d->cons) {
             printf (" ");
         }
-        if (n->car->typeflag == CONS) {
+        if ((f = is_list (n->car)) == true) {
             printS_withoutFree(n->car);
         }
         printAtom_withoutFree (n->car);
@@ -1116,9 +1122,9 @@ bool printAtom (struct Data *d) {
     return true;
 }
 bool myPrint () {
-    bool ret = true;
+    bool ret = true, f;
     struct Data *d = &Datas[index_of_Read_Datas];
-    if (d->typeflag == CONS) {
+    if ((f = is_list (d)) == true) {
         ret = printS (d);
         printf("\n");
         if (ret == false) {
@@ -1279,7 +1285,7 @@ bool BI_equal (struct Data *d) {
 /*      =      <a1>    <a2> .... NIL
   *d -> [][] -> [][] -> [][]...-> [][]
 */
-    bool ret = true;
+    bool ret = true, f;
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
@@ -1305,7 +1311,7 @@ bool BI_equal (struct Data *d) {
                     ret = false;
                     break;
                 }
-            } else if (n->car->typeflag == CONS) {
+            } else if ((f = is_list (n->car)) == true) {
                 if (equalS (n->car, nn->car) == false) {
                     ret = false;
                     break;
@@ -1716,14 +1722,14 @@ bool BI_lambda_helper2 (struct Data *d) {
     return ret;
 }
 bool BI_lambda (struct Data *d) {
-    bool ret = true;
+    bool ret = true,f;
     struct Data *params = d->cons->car->cons->cdr->car,
                 *body = d->cons->car->cons->cdr->cdr->car,
                 *args = d->cons->cdr->car;
 
-    if ((params->typeflag == CONS) &&
-        (body->typeflag == CONS)) { 
-        if (args->typeflag == CONS) {
+    if (((f = is_list(params)) == true) &&
+        ((f = is_list(body)) == true)) { 
+        if ((f = is_list (args)) == true) {
             ret = BI_lambda_helper (d);
         } else if ((args->typeflag != NIL) && (d->cons->cdr->cdr != NULL)) {
             ret = BI_lambda_helper2 (d);
@@ -1756,8 +1762,9 @@ bool BI_load (struct Data *d) {
     return true;
 }
 bool BI_quote (struct Data *d) {
+    bool f;
     struct Cons *tmp = d->cons;
-    if (d->cons->cdr->car->typeflag == CONS) {
+    if ((f = is_list (d->cons->cdr->car)) == true) {
         d->cons = d->cons->cdr->car->cons;
         freeData (tmp->cdr->car);
         freeConsCell (tmp->cdr);
@@ -1770,14 +1777,14 @@ bool BI_quote (struct Data *d) {
     return true;
 }
 bool BI_car (struct Data *d){
-    bool ret = true;
+    bool ret = true,f;
 /*   car     <a>     <b>
              [][] -> [][]
   d->[][] -> [][]
 */
     struct Cons *tmp1,*tmp2;
-    if ((d->typeflag == CONS) &&
-        (d->cons->cdr->car->typeflag == CONS)) {
+    if (((f = is_list (d)) == true) &&
+        ((f = is_list (d->cons->cdr->car)) == true)) {
         tmp1 = d->cons->cdr->car->cons;
         tmp2 = d->cons;
         copyData (tmp1->car, d);
@@ -1790,9 +1797,9 @@ bool BI_car (struct Data *d){
     return ret;
 }
 bool BI_cdr (struct Data *d) {
-    bool ret = true;
+    bool ret = true,f;
     struct Cons *tmp;
-    if (d->cons->cdr->car->typeflag == CONS) {
+    if ((f = is_list (d->cons->cdr->car)) == true) {
         tmp = d->cons;
         d->cons = d->cons->cdr->car->cons->cdr;
         tmp->cdr->car->cons->cdr = NULL;
@@ -2010,14 +2017,12 @@ bool BI_mult (struct Data *d) {
     return ret;
 }
 bool BI_set (struct Data *d) {
-    bool ret = false;
+    bool ret = false,f;
     struct Data *k = d->cons->cdr->car,
                 *v = d->cons->cdr->cdr->car;
     struct Cons *c = DefinePool->cons;
 
-    if (v->typeflag == CONS) {
-        ;
-    } else {
+    if ((f = is_atom(v)) == true) {
         while ((c->cdr != NULL) && (c->car->typeflag != NIL)) {
             if ((c->car->typeflag == SYMBOL) && (compString(k->char_data,c->car->char_data) == true)) {
                 ret = true;
@@ -2033,7 +2038,7 @@ bool BI_set (struct Data *d) {
     return ret;
 }
 bool eval_progn (struct Data *d) {
-    bool ret = true;
+    bool ret = true, f;
     /*   <p1>  <p2>  NIL
       d->[][]->[][]->[][]
      */
@@ -2043,7 +2048,7 @@ bool eval_progn (struct Data *d) {
     copyData (d, &c);
 
     while ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
-        if (p->car->typeflag == CONS) {
+        if ((f = is_list(p->car)) == true) {
             evalEach (p->car);
         } else {
             evalAtom (p->car);
@@ -2051,7 +2056,7 @@ bool eval_progn (struct Data *d) {
         tmp = p;
         p = p->cdr;
     }
-    if (tmp->car->typeflag == CONS) {
+    if ((f = is_list (tmp->car)) == true) {
         d->cons = tmp->car->cons;
         tmp->car->typeflag = INT;
         tmp->car->cons = NULL;
@@ -2081,7 +2086,7 @@ void eval_let_helper_free_DefinePools(int i) {
     freeDefinePoolS (i);
 }
 bool eval_let (struct Data *d) {
-    bool ret = true;
+    bool ret = true, f;
     int i;
     struct Data *let = d->cons->cdr->car;
     struct Data *body = d->cons->cdr->cdr->car;
@@ -2090,7 +2095,7 @@ bool eval_let (struct Data *d) {
     i = eval_let_helper_set_DefinePools(let);
 
     /* eval body */
-    if (body->typeflag == CONS) {
+    if ((f = is_list (body)) == true) {
         ret = evalS(body);
         if (ret == false) {
             return false;
@@ -2101,7 +2106,7 @@ bool eval_let (struct Data *d) {
             return false;
         }
     }
-    if (body->typeflag == CONS) {
+    if ((f = is_list (body)) == true) {
         ret = evalS(body);
         if (ret == false) {
             return false;
@@ -2124,14 +2129,29 @@ bool eval_let (struct Data *d) {
 }
 bool BI_atom (struct Data *d) {
     bool ret = true, flag;
-    if (d->cons->cdr->car->typeflag == CONS) {
-        flag = false;
-    } else {
-        flag = true;
-    }
+
+    flag = is_atom (d->cons->cdr->car);
     freeConsCells (d->cons);
     d->cons = NULL;
     d->typeflag = BOOL;
     d->bool = flag;
+    return ret;
+}
+bool is_atom (struct Data *d) {
+    bool ret = true;
+    if (d->typeflag == CONS) {
+        ret = false;
+    }
+
+    return ret;
+}
+bool is_list (struct Data *d) {
+    bool ret = true, flag;
+    flag = is_atom (d);
+    if (flag == true) {
+        ret = false;
+    } else {
+        ret = true;
+    }
     return ret;
 }
