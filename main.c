@@ -84,6 +84,7 @@ bool BI_greater_than (struct Data *);
 bool BI_less_equal (struct Data *);
 bool BI_greater_equal (struct Data *);
 bool BI_quote (struct Data *);
+bool BI_list (struct Data *);
 bool BI_car (struct Data *);
 bool BI_cdr (struct Data *);
 bool BI_atom (struct Data *);
@@ -711,6 +712,9 @@ bool spForm (struct Data *d) {
         }
     } else if (((ret = compString (car, "lambda")) == true) ||
                ((ret = compString (car, "LAMBDA")) == true)) {
+    } else if (((ret = compString (car, "list")) == true) ||
+               ((ret = compString (car, "LIST")) == true)) {
+        ret = BI_list (d);
     } else if (((ret = compString (car, "quote")) == true) ||
                ((ret = compString (car, "QUOTE")) == true)) {
         /* quote */
@@ -896,6 +900,9 @@ bool evalEach (struct Data *d) {
                   (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
     } else if ((compString (s, "lambda") == true) ||
                (compString (s, "LAMBDA") == true)) {
+    } else if ((compString (s, "list") == true) ||
+               (compString (s, "LIST") == true)) {
+        ret = eval_co_each(d->cons->cdr);
     } else if ((compString (s, "quote") == true) ||
                (compString (s, "QUOTE") == true)) {
     } else if ((compString (s, "if") == true) ||
@@ -1663,10 +1670,10 @@ bool BI_define (struct Data *d) {
 bool BI_lambda_helper (struct Data *d) {
     bool ret = true;
     int i;
-    struct Data *params = d->cons->car->cons->cdr->car,
-                *body = d->cons->car->cons->cdr->cdr->car,
+    struct Cons *tmp = d->cons->car->cons->cdr;
+    struct Data *params = tmp->car,
+                *body = tmp->cdr->car,
                 *args = d->cons->cdr->car;
-    struct Cons *tmp;
 
     i = setDefinePoolS (params, args);
     if (i == 0) {
@@ -1765,15 +1772,28 @@ bool BI_quote (struct Data *d) {
     bool f;
     struct Cons *tmp = d->cons;
     if ((f = is_list (d->cons->cdr->car)) == true) {
-        d->cons = d->cons->cdr->car->cons;
-        freeData (tmp->cdr->car);
-        freeConsCell (tmp->cdr);
+        tmp = d->cons->cdr->car->cons;
+        d->cons->cdr->car->cons = NULL;
+        d->cons->cdr->car->typeflag = INT;
+        freeConsCells (d->cons);
+        d->cons = tmp;
     } else {
         copyData (d->cons->cdr->car, d);
         freeConsCells (tmp->cdr);
+        freeData (tmp->car);
+        freeConsCell (tmp);
     }
-    freeData (tmp->car);
-    freeConsCell (tmp);
+    return true;
+}
+bool BI_list (struct Data *d) {
+    bool f;
+    struct Cons *tmp = d->cons;
+
+    d->cons = d->cons->cdr;
+
+    tmp->cdr = NULL;
+    freeConsCells (tmp);
+
     return true;
 }
 bool BI_car (struct Data *d){
@@ -1822,44 +1842,64 @@ bool BI_cons (struct Data *d) {
     int i;
     struct Cons *tmp;
     struct Data *car = d->cons->cdr->car, *cdr = d->cons->cdr->cdr->car;
-    bool ret = true;
+    bool ret = true, f;
 
     /* parameter chech */
-    if ((cdr->typeflag == NIL) && (d->cons->cdr->cdr->cdr == NULL)){
+    if ((d->cons->cdr->cdr == NULL) || (d->cons->cdr->cdr->cdr == NULL)) {
+        /* -- 0/1 arg => NG. */
+        ret = false;
+        return ret;
+    } else if ((d->cons->cdr->cdr->cdr->car->typeflag == NIL) && (d->cons->cdr->cdr->cdr->cdr == NULL)){
         /* -- 2 args => OK. */
     } else {
         /* -- other => NG. */
+        printf ("[cons] more parameter\n");
         ret = false;
         return ret;
     }
 
-    /* (cons <atom> (list)) => (atom list) */
-    /* (cons (list) (list)) => ((list) list) */
-    /* (cons <atom> NIL) => (atom) */
-    /* (cons (list) NIL) => ((list)) */
+    if ((f = is_list (cdr)) == true) {
+        if (((f = is_atom (car)) == true) || 
+            ((f = is_list (car)) == true)) {
+            /* ----------------------------------- */
+            /* (cons <atom> (list)) => (atom list) */
+            /* (cons (list) (list)) => ((list) list) */
+            /* ----------------------------------- */
+            tmp = d->cons; 
+            d->cons = d->cons->cdr;
+            freeData (tmp->car);
+            freeConsCell (tmp);
+            tmp = d->cons->cdr;
+            d->cons->cdr = cdr->cons;
+            freeConsCell (tmp);
+        } else {
+            ret = false;
+        }
+    } else if (cdr->typeflag == NIL) {
+        if (((f = is_atom (car)) == true) ||
+            ((f = is_list (car)) == true)) {
+            /* --------------------------- */
+            /* (cons <atom> NIL) => (atom) */
+            /* (cons (list) NIL) => ((list)) */
+            /* --------------------------- */
+            tmp = d->cons->cdr->cdr; 
+            d->cons->cdr->cdr = d->cons->cdr->cdr->cdr;
+            freeData (tmp->car);
+            freeConsCell (tmp);
+            tmp = d->cons; 
+            d->cons = d->cons->cdr;
+            freeData (tmp->car);
+            freeConsCell (tmp);
+        } else {
+            ret = false;
+        }
+    } else if ((f = is_atom (cdr)) == true) {
+            /* Dot pair */
+            ret = false;
+    } else {
+        ret = false;
+    }
 
-    if (car->typeflag == CONS) {
-        ret = false;
-    } else if (cdr->typeflag == CONS) {
-       tmp = d->cons; 
-       d->cons = d->cons->cdr;
-       freeData (tmp->car);
-       freeConsCell (tmp);
-       tmp = d->cons->cdr;
-       d->cons->cdr = cdr->cons;
-       freeConsCell (tmp);
-    } else if ((cdr->typeflag == NIL) && (d->cons->cdr->cdr->cdr != NULL)){
-       tmp = d->cons->cdr->cdr; 
-       d->cons->cdr->cdr = d->cons->cdr->cdr->cdr;
-       freeData (tmp->car);
-       freeConsCell (tmp);
-       tmp = d->cons; 
-       d->cons = d->cons->cdr;
-       freeData (tmp->car);
-       freeConsCell (tmp);
-    } else { 
-        ret = false;
-    } 
     return ret;
 }
 int setDefinePoolS (struct Data *k, struct Data *v){
@@ -2146,11 +2186,8 @@ bool is_atom (struct Data *d) {
     return ret;
 }
 bool is_list (struct Data *d) {
-    bool ret = true, flag;
-    flag = is_atom (d);
-    if (flag == true) {
-        ret = false;
-    } else {
+    bool ret = false;
+    if (d->typeflag == CONS) {
         ret = true;
     }
     return ret;
