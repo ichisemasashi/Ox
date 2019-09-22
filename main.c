@@ -1673,15 +1673,21 @@ bool BI_lambda_helper (struct Data *d) {
     struct Cons *tmp = d->cons->car->cons->cdr;
     struct Data *params = tmp->car,
                 *body = tmp->cdr->car,
-                *args = d->cons->cdr->car;
+                args;
+                args.cons = d->cons->cdr;
+                args.typeflag = CONS;
 
-    i = setDefinePoolS (params, args);
+    ret = evalEach (&args);
+    if (ret == false) {
+        return false;
+    }
+
+    i = setDefinePoolS (params, &args);
     if (i == 0) {
         ret = false;
     } else {
         tmp = d->cons;
         d->cons = body->cons;
-        freeConsCell (tmp->cdr);
         freeConsCell (tmp->car->cons->cdr->cdr);
         freeConsCell (tmp->car->cons->cdr);
         freeData (tmp->car->cons->car);
@@ -1693,55 +1699,14 @@ bool BI_lambda_helper (struct Data *d) {
     }
     return ret;
 }
-bool BI_lambda_helper2 (struct Data *d) {
-    bool ret = true;
-    int i;
-    struct Cons *tmp;
-    struct Data *params = d->cons->car->cons->cdr->car,
-                *body = d->cons->car->cons->cdr->cdr->car,
-                *args;
-
-    if ((i = getData ()) == MAXBUF) {
-        return false;
-    }
-    args = &Datas[i];
-    args->typeflag = CONS;
-    tmp = d->cons->cdr->cdr;
-    args->cons = d->cons->cdr;
-
-    if ((i = getConsCell ()) == MAXBUF) {
-        return false;
-    }
-    d->cons->cdr = &ConsCells[i];
-    d->cons->cdr->car = args;
-    if ((i = getConsCell ()) == MAXBUF) {
-        return false;
-    }
-    d->cons->cdr->cdr = &ConsCells[i];
-    if ((i = getData ()) == MAXBUF) {
-        return false;
-    }
-    d->cons->cdr->cdr->car = &Datas[i];
-    d->cons->cdr->cdr->car->typeflag = NIL;
-    d->cons->cdr->cdr->cdr = NULL;
-
-    ret = BI_lambda_helper (d);
-    return ret;
-}
 bool BI_lambda (struct Data *d) {
     bool ret = true,f;
     struct Data *params = d->cons->car->cons->cdr->car,
-                *body = d->cons->car->cons->cdr->cdr->car,
-                *args = d->cons->cdr->car;
+                *body = d->cons->car->cons->cdr->cdr->car;
 
     if (((f = is_list(params)) == true) &&
         ((f = is_list(body)) == true)) { 
-        if ((f = is_list (args)) == true) {
-            ret = BI_lambda_helper (d);
-        } else if ((args->typeflag != NIL) && (d->cons->cdr->cdr != NULL)) {
-            ret = BI_lambda_helper2 (d);
-        } else {
-        }
+        ret = BI_lambda_helper (d);
     } else {
         ret = false;
     }
@@ -1922,7 +1887,6 @@ int setDefinePoolS (struct Data *k, struct Data *v){
         ret = 0;
     } else {
         freeData (k);
-        freeData (v);
         freeConsCells(nk);
         freeConsCells(nv);
     }
