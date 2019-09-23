@@ -129,6 +129,7 @@ struct functionName{
     "-", BI_minus,
     "*", BI_mult,
     "atom?", BI_atom,
+    "list", BI_list,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1676,11 +1677,6 @@ bool BI_lambda_helper (struct Data *d) {
                 args;
                 args.cons = d->cons->cdr;
                 args.typeflag = CONS;
-
-    ret = evalEach (&args);
-    if (ret == false) {
-        return false;
-    }
 
     i = setDefinePoolS (params, &args);
     if (i == 0) {
