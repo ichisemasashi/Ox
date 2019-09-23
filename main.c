@@ -1297,7 +1297,7 @@ bool BI_equal (struct Data *d) {
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+    while(nn->cdr != NULL) {
         if (n->car->typeflag == nn->car->typeflag) {
             if (n->car->typeflag == INT) {
                 if (n->car->int_data != nn->car->int_data) {
@@ -1325,11 +1325,18 @@ bool BI_equal (struct Data *d) {
                     break;
                 }
             } else if (n->car->typeflag == NIL) {
+                if (nn->car->typeflag != NIL) {
+                    ret = false;
+                    break;
+                }
             } else if (n->car->typeflag == BOOL) {
                 if (n->car->bool != nn->car->bool) {
                     ret = false;
                     break;
                 }
+            } else {
+                ret = false;
+                break;
             }
         } else {
             ret = false;
