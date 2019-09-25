@@ -534,12 +534,28 @@ float myPow (int x) {
 }
 int toInt(struct token *p) {
     int result, i;
-    for(i=0,result=0;i<p->size;i++) {
+    bool pm = false; /* plus-minus */
+
+    if (p->tokenp[0] == '-') {
+        pm = true;
+        i = 1;
+    } else if (p->tokenp[0] == '+') {
+        i = 1;
+    } else {
+        i = 0;
+    }
+
+    for(result=0;i<p->size;i++) {
         result = result + p->tokenp[i] - '0';
         if (i < p->size - 1) {
             result = result * 10;
         }
     }
+
+    if (pm == true) {
+        result = result * -1;
+    }
+
     return result;
 }
 
@@ -847,6 +863,12 @@ bool eval_cond (struct Data *d) {
         if ((cond_p->typeflag == SYMBOL) &&
             ((compString (cond_p->char_data, "else") == true) ||
              (compString (cond_p->char_data, "ELSE") == true))) {
+            ret = true;
+            cond_p->typeflag = BOOL;
+            cond_p->bool = true;
+        } else if ((cond_p->typeflag == SYMBOL) &&
+                   ((compString (cond_p->char_data, "true") == true) ||
+                    (compString (cond_p->char_data, "TRUE") == true))) {
             ret = true;
             cond_p->typeflag = BOOL;
             cond_p->bool = true;
@@ -1915,15 +1937,19 @@ bool BI_minus_float (struct Data *d) {
     } else {
         ret_float = (float)args->car->int_data;
     }
-    args = args->cdr;
 
-    while (args->cdr != NULL) {
-        if (args->car->typeflag == FLOAT) {
-            ret_float -= args->car->float_data;
-        } else {
-            ret_float -= (float)args->car->float_data;
-        }
+    if (args->cdr->cdr == NULL) {
+        ret_float = 0 - args->car->float_data;
+    } else {
         args = args->cdr;
+        while (args->cdr != NULL) {
+            if (args->car->typeflag == FLOAT) {
+                ret_float -= args->car->float_data;
+            } else {
+                ret_float -= (float)args->car->float_data;
+            }
+            args = args->cdr;
+        }
     }
 
     freeConsCells (d->cons);
@@ -1937,11 +1963,15 @@ bool BI_minus_int (struct Data *d) {
     struct Cons *args = d->cons->cdr;
     int ret_int = args->car->int_data;
 
-    args = args->cdr;
-
-    while (args->cdr != NULL) {
-        ret_int -= args->car->int_data;
+    if (args->cdr->cdr == NULL) {
+        /* ONE ARGS => negaite */
+        ret_int = 0 - args->car->int_data;
+    } else {
         args = args->cdr;
+        while (args->cdr != NULL) {
+            ret_int -= args->car->int_data;
+            args = args->cdr;
+        }
     }
 
     freeConsCells (d->cons);
