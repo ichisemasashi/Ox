@@ -112,6 +112,9 @@ bool BI_mult_float (struct Data *);
 bool BI_set (struct Data *);
 bool is_atom (struct Data *);
 bool is_list (struct Data *);
+bool BI_division (struct Data *);
+bool BI_division_int (struct Data *);
+bool BI_division_float (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -128,6 +131,7 @@ struct functionName{
     "cons", BI_cons,
     "-", BI_minus,
     "*", BI_mult,
+    "/", BI_division,
     "atom?", BI_atom,
     "list", BI_list,
     "",NULL /* terminator */
@@ -2057,6 +2061,78 @@ bool BI_mult (struct Data *d) {
     } else {
         ret = BI_mult_int (d);
     }
+    return ret;
+}
+bool BI_division (struct Data *d) {
+    bool ret = true, isfloat = false;
+    struct Cons *args = d->cons->cdr, *arg1, *arg2;
+
+    /* parameter check */
+    if (args == NULL) {
+        ret = false;
+    } else if (args->cdr == NULL) {
+        ret = false;
+    } else if (args->cdr->cdr->cdr == NULL) {
+        arg1 = args;
+        arg2 = args->cdr;
+        ret = true;
+        isfloat = true;
+        if ((arg1->car->typeflag == INT) &&
+            (arg2->car->typeflag == INT)) {
+            if ((arg1->car->int_data % arg2->car->int_data) == 0) {
+                isfloat = false;
+            }
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == false) {
+        return ret;
+    }
+
+    if (isfloat == true) {
+        ret = BI_division_float (d);
+    } else {
+        ret = BI_division_int (d);
+    }
+    return ret;
+}
+bool BI_division_int (struct Data *d) {
+    bool ret = true;
+    int result;
+    struct Cons *arg1 = d->cons->cdr, *arg2 = d->cons->cdr->cdr;
+
+    result = arg1->car->int_data / arg2->car->int_data;
+
+    freeConsCells (d->cons);
+    d->typeflag = INT;
+    d->int_data = result;
+    d->cons = NULL;
+    return ret;
+}
+bool BI_division_float (struct Data *d) {
+    bool ret = true;
+    float result;
+    struct Cons *arg1 = d->cons->cdr, *arg2 = d->cons->cdr->cdr;
+
+    if ((arg1->car->typeflag == INT) && (arg2->car->typeflag == INT)) {
+        result = (float)arg1->car->int_data / (float)arg2->car->int_data;
+    } else if ((arg1->car->typeflag == INT) && (arg2->car->typeflag == FLOAT)) {
+        result = (float)arg1->car->int_data / arg2->car->float_data;
+    } else if ((arg1->car->typeflag == FLOAT) && (arg2->car->typeflag == INT)) {
+        result = arg1->car->float_data / (float)arg2->car->int_data;
+    } else if ((arg1->car->typeflag == FLOAT) && (arg2->car->typeflag == FLOAT)) {
+        result = arg1->car->float_data / arg2->car->float_data;
+    } else {
+        ret = false;
+        return ret;
+    }
+
+    freeConsCells (d->cons);
+    d->typeflag = FLOAT;
+    d->float_data = result;
+    d->cons = NULL;
     return ret;
 }
 bool BI_set (struct Data *d) {
