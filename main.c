@@ -850,7 +850,7 @@ bool eval_cond (struct Data *d) {
     struct Cons *tmp_p, *tmpCons;
 
     tmp_p = d->cons->cdr;
-    while ((tmp_p->car->typeflag != NIL) && (tmp_p->cdr != NULL)) {
+    while (tmp_p->cdr != NULL) {
         /* form check */
         if ((f = is_list (tmp_p->car)) == false) {
             break;
@@ -997,7 +997,7 @@ bool copyConsData (struct Data *from, struct Data *to) {
     }
     nt = &ConsCells[i];
     to->cons = nt;
-    while ((nf->car->typeflag != NIL) && (nf->cdr != NULL)) {
+    while (nf->cdr != NULL) {
         if ((i = getData ()) == MAXBUF) {
             ret = false;
             break;
@@ -1387,7 +1387,7 @@ bool BI_less_than(struct Data *d) {
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+    while(nn->cdr != NULL) {
         if (n->car->typeflag == INT) {
             if (nn->car->typeflag == INT) {
                 if (n->car->int_data >= nn->car->int_data) {
@@ -1444,7 +1444,7 @@ bool BI_greater_than(struct Data *d) {
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+    while(nn->cdr != NULL) {
         if (n->car->typeflag == INT) {
             if (nn->car->typeflag == INT) {
                 if (n->car->int_data <= nn->car->int_data) {
@@ -1501,7 +1501,7 @@ bool BI_less_equal(struct Data *d) {
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+    while(nn->cdr != NULL) {
         if (n->car->typeflag == INT) {
             if (nn->car->typeflag == INT) {
                 if (n->car->int_data > nn->car->int_data) {
@@ -1558,7 +1558,7 @@ bool BI_greater_equal(struct Data *d) {
     struct Cons *n = d->cons->cdr, *nn = d->cons->cdr->cdr;
     struct Data *tmp;
 
-    while((nn->car->typeflag != NIL) && (nn->cdr != NULL)) {
+    while(nn->cdr != NULL) {
         if (n->car->typeflag == INT) {
             if (nn->car->typeflag == INT) {
                 if (n->car->int_data < nn->car->int_data) {
@@ -1707,21 +1707,28 @@ bool BI_lambda_helper (struct Data *d) {
                 args.cons = d->cons->cdr;
                 args.typeflag = CONS;
 
-    i = setDefinePoolS (params, &args);
-    if (i == 0) {
-        ret = false;
+    if (params->typeflag == NIL) {
+        i = 0;
     } else {
-        tmp = d->cons;
-        d->cons = body->cons;
-        freeConsCell (tmp->car->cons->cdr->cdr);
-        freeConsCell (tmp->car->cons->cdr);
-        freeData (tmp->car->cons->car);
-        freeConsCell (tmp->car->cons);
-        freeData (tmp->car);
-        freeConsCell (tmp);
-        evalS (d);
+        i = setDefinePoolS (params, &args);
+        if (i == 0) {
+            return false;
+        }
+    }
+
+    tmp = d->cons;
+    d->cons = body->cons;
+    freeConsCell (tmp->car->cons->cdr->cdr);
+    freeConsCell (tmp->car->cons->cdr);
+    freeData (tmp->car->cons->car);
+    freeConsCell (tmp->car->cons);
+    freeData (tmp->car);
+    freeConsCell (tmp);
+    evalS (d);
+    if (i != 0) {
         freeDefinePoolS (i);
     }
+
     return ret;
 }
 bool BI_lambda (struct Data *d) {
@@ -1729,8 +1736,7 @@ bool BI_lambda (struct Data *d) {
     struct Data *params = d->cons->car->cons->cdr->car,
                 *body = d->cons->car->cons->cdr->cdr->car;
 
-    if (((f = is_list(params)) == true) &&
-        ((f = is_list(body)) == true)) { 
+    if ((f = is_list(body)) == true) { 
         ret = BI_lambda_helper (d);
     } else {
         ret = false;
@@ -2084,7 +2090,7 @@ bool eval_progn (struct Data *d) {
     struct Data c;
     copyData (d, &c);
 
-    while ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
+    while (p->cdr != NULL) {
         if ((f = is_list(p->car)) == true) {
             evalEach (p->car);
         } else {
@@ -2107,7 +2113,7 @@ int eval_let_helper_set_DefinePools(struct Data *d) {
     struct Cons *p = d->cons, *tmp;
     int ret = 0;
 
-    while ((p->car->typeflag != NIL) && (p->cdr != NULL)) {
+    while (p->cdr != NULL) {
         tmp = DefinePool->cons;
         DefinePool->cons = p->car->cons;
         freeConsCells(p->car->cons->cdr->cdr);
