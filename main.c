@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <float.h>
+#include <math.h>
 
 #define MAXBUF 4096 /* buf size */
 #define MAXTOKEN 4096 /* token size */
@@ -115,6 +116,8 @@ bool is_list (struct Data *);
 bool BI_division (struct Data *);
 bool BI_division_int (struct Data *);
 bool BI_division_float (struct Data *);
+bool BI_exp (struct Data *);
+bool BI_log (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -134,6 +137,8 @@ struct functionName{
     "/", BI_division,
     "atom?", BI_atom,
     "list", BI_list,
+    "exp", BI_exp,
+    "log", BI_log,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -1958,9 +1963,9 @@ bool BI_minus_float (struct Data *d) {
         args = args->cdr;
         while (args->cdr != NULL) {
             if (args->car->typeflag == FLOAT) {
-                ret_float -= args->car->float_data;
+                ret_float = ret_float - args->car->float_data;
             } else {
-                ret_float -= (float)args->car->float_data;
+                ret_float = ret_float - (float)args->car->int_data;
             }
             args = args->cdr;
         }
@@ -2160,6 +2165,69 @@ bool BI_set (struct Data *d) {
     }
     return ret;
 }
+bool BI_exp (struct Data *d) {
+    bool ret = false;
+    double result;
+    struct Cons *tmp;
+
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        ret = true;
+        if (d->cons->cdr->car->typeflag == INT) {
+            result = exp ((double)d->cons->cdr->car->int_data);
+        } else if (d->cons->cdr->car->typeflag == FLOAT) {
+            result = exp ((double)d->cons->cdr->car->float_data);
+        } else {
+            ret = false;
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = FLOAT;
+        d->float_data = (float)result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
+bool BI_log (struct Data *d) {
+    bool ret = false;
+    double result;
+    struct Cons *tmp;
+
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        ret = true;
+        if (d->cons->cdr->car->typeflag == INT) {
+            result = log ((double)d->cons->cdr->car->int_data);
+        } else if (d->cons->cdr->car->typeflag == FLOAT) {
+            result = log ((double)d->cons->cdr->car->float_data);
+        } else {
+            ret = false;
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = FLOAT;
+        d->float_data = (float)result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
+
 bool eval_progn (struct Data *d) {
     bool ret = true, f;
     /*   <p1>  <p2>  NIL
