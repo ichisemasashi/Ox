@@ -877,7 +877,11 @@ bool eval_cond (struct Data *d) {
             cond_p->typeflag = BOOL;
             cond_p->bool = true;
         } else {
-            ret = evalS(cond_p);
+            if (is_list (cond_p) == true) {
+                ret = evalS (cond_p);
+            } else {
+                ret = evalAtom (cond_p);
+            }
         }
         if (ret == false) {
             break;
