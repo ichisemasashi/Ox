@@ -666,6 +666,10 @@ int getData () {
         if (i == MAXBUF -1) {
           loop++;
           i = 0;
+          if (loop > 2) {
+              i = MAXBUF;
+              break;
+          }
           continue;
         }
         if (Datas[i].useflag == not_use) {
