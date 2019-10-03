@@ -2,9 +2,9 @@
 #include <float.h>
 #include <math.h>
 
-#define MAXBUF 40960 /* buf size */
-#define MAXTOKEN 40960 /* token size */
-#define MAXMEMORY 40960
+#define MAXBUF 0x555555 /* buf size */
+#define MAXTOKEN 0x555555 /* token size */
+#define MAXMEMORY 0x555555
 #define MAXSTRINGS 20
 
 static int buf[MAXBUF];
@@ -116,6 +116,7 @@ bool is_list (struct Data *);
 bool BI_division (struct Data *);
 bool BI_division_int (struct Data *);
 bool BI_division_float (struct Data *);
+bool BI_modulo (struct Data *);
 bool BI_exp (struct Data *);
 bool BI_log (struct Data *);
 
@@ -139,6 +140,7 @@ struct functionName{
     "list", BI_list,
     "exp", BI_exp,
     "log", BI_log,
+    "mod", BI_modulo,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -2231,7 +2233,35 @@ bool BI_log (struct Data *d) {
 
     return ret;
 }
+bool BI_modulo (struct Data *d) {
+    bool ret = false;
+    int result;
+    struct Cons *tmp;
 
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr->cdr == NULL) {
+        if ((d->cons->cdr->car->typeflag == INT) &&
+            (d->cons->cdr->cdr->car->typeflag == INT)) {
+            ret = true;
+            result = (d->cons->cdr->car->int_data) % 
+                     (d->cons->cdr->cdr->car->int_data);
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = INT;
+        d->int_data = result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
 bool eval_progn (struct Data *d) {
     bool ret = true, f;
     /*   <p1>  <p2>  NIL
