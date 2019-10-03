@@ -46,4 +46,4 @@ Lisp > (define fast-prime? (lambda (n times)
         (else false))))
 fast-prime?
 Lisp > (fast-prime? 200 5)
-Segmentation fault: 11
+FALSE
