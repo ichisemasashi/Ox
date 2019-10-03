@@ -2,9 +2,9 @@
 #include <float.h>
 #include <math.h>
 
-#define MAXBUF 4096 /* buf size */
-#define MAXTOKEN 4096 /* token size */
-#define MAXMEMORY 4096
+#define MAXBUF 40960 /* buf size */
+#define MAXTOKEN 40960 /* token size */
+#define MAXMEMORY 40960
 #define MAXSTRINGS 20
 
 static int buf[MAXBUF];
