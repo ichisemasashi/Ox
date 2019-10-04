@@ -639,8 +639,12 @@ int getConsCell () {
     return i;
 }
 void freeConsCells (struct Cons *c) {
-    struct Cons *cons = c, *n = c->cdr, *tmp;
+    struct Cons *cons = c, *n, *tmp;
     bool f;
+    if (c == NULL) {
+        return;
+    }
+    n = c->cdr;
     while (n != NULL) {
         if (cons->car == NULL) {
         } else {
@@ -1159,15 +1163,20 @@ bool printAtom_withoutFree (struct Data *d) {
         printf ("%f",d->float_data);
     } else if (d->typeflag == STRING) {
         printf ("%s",d->char_data);
+        fflush(stdout);
     } else if (d->typeflag == SYMBOL) {
         printf ("%s",d->char_data);
+        fflush(stdout);
     } else if (d->typeflag == NIL) {
         printf ("NIL");
+        fflush(stdout);
     } else if (d->typeflag == BOOL) {
         if (d->bool == true) {
             printf ("TRUE");
+            fflush(stdout);
         } else {
             printf ("FALSE");
+            fflush(stdout);
         }
     }
     return true;
@@ -2390,18 +2399,22 @@ bool BI_runtime (struct Data *d) {
 
     gettimeofday(&tv, NULL);
     d->typeflag = INT;
-    d->int_data = tv.tv_sec;
+    d->int_data = tv.tv_usec;
     return ret;
 }
 bool BI_display (struct Data *d) {
     bool ret = true;
-    printAtom (d->cons->cdr->car);
-    fflush(stdout);
+
+    printAtom(d->cons->cdr->car);
     freeConsCells (d->cons);
+    d->typeflag = NIL;
+    d->cons = NULL;
     return ret;
 }
 bool BI_newline (struct Data *d) {
     printf("\n");
     freeConsCells (d->cons);
+    d->typeflag = NIL;
+    d->cons = NULL;
     return true;
 }
