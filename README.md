@@ -49,4 +49,8 @@ Lisp > (define my-add (lambda (x y z) (let ((ret (+ x y z))) ret)))
 my-add
 Lisp > (my-add 1 2 3)
 6
+Lisp > (progn (display "=====")(display (runtime))(newline))
+=====660706
+NIL
+
 ```
