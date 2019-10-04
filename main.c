@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
+#include <sys/time.h>
 
 #define MAXBUF 0x555555 /* buf size */
 #define MAXTOKEN 0x555555 /* token size */
@@ -119,6 +120,9 @@ bool BI_division_float (struct Data *);
 bool BI_modulo (struct Data *);
 bool BI_exp (struct Data *);
 bool BI_log (struct Data *);
+bool BI_runtime (struct Data *);
+bool BI_display (struct Data *);
+bool BI_newline (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -141,6 +145,9 @@ struct functionName{
     "exp", BI_exp,
     "log", BI_log,
     "mod", BI_modulo,
+    "runtime", BI_runtime,
+    "display", BI_display,
+    "newline", BI_newline,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -2274,7 +2281,7 @@ bool eval_progn (struct Data *d) {
 
     while (p->cdr != NULL) {
         if ((f = is_list(p->car)) == true) {
-            evalEach (p->car);
+            evalS (p->car);
         } else {
             evalAtom (p->car);
         }
@@ -2376,4 +2383,25 @@ bool is_list (struct Data *d) {
         ret = true;
     }
     return ret;
+}
+bool BI_runtime (struct Data *d) {
+    bool ret = true;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    d->typeflag = INT;
+    d->int_data = tv.tv_sec;
+    return ret;
+}
+bool BI_display (struct Data *d) {
+    bool ret = true;
+    printAtom (d->cons->cdr->car);
+    fflush(stdout);
+    freeConsCells (d->cons);
+    return ret;
+}
+bool BI_newline (struct Data *d) {
+    printf("\n");
+    freeConsCells (d->cons);
+    return true;
 }
