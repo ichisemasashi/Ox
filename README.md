@@ -52,5 +52,10 @@ Lisp > (my-add 1 2 3)
 Lisp > (progn (display "=====")(display (runtime))(newline))
 =====660706
 NIL
-
+Lisp > (random 4)
+4
+Lisp > (random 4)
+3
+Lisp > (random 4)
+2
 ```

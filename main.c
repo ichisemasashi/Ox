@@ -2,6 +2,8 @@
 #include <float.h>
 #include <math.h>
 #include <sys/time.h>
+#include <time.h>
+#include <stdlib.h>
 
 #define MAXBUF 0x555555 /* buf size */
 #define MAXTOKEN 0x555555 /* token size */
@@ -123,6 +125,7 @@ bool BI_log (struct Data *);
 bool BI_runtime (struct Data *);
 bool BI_display (struct Data *);
 bool BI_newline (struct Data *);
+bool BI_random (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -148,6 +151,7 @@ struct functionName{
     "runtime", BI_runtime,
     "display", BI_display,
     "newline", BI_newline,
+    "random", BI_random,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -2417,4 +2421,34 @@ bool BI_newline (struct Data *d) {
     d->typeflag = NIL;
     d->cons = NULL;
     return true;
+}
+bool BI_random (struct Data *d) {
+    int result, n;
+    struct Cons *tmp;
+    bool ret = false;
+
+    srand((unsigned)time(NULL)); /* set random seed */
+
+    /* parameter check */
+    tmp = d->cons;
+    if (d->cons->cdr->cdr == NULL) {
+        /* No parameter */
+        ret = true;
+        result = rand();
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        /* One parameter */
+        if (d->cons->cdr->car->typeflag == INT) {
+            ret = true;
+            n = d->cons->cdr->car->int_data;
+            result = rand() % n + 1;
+        }
+    }
+
+    if (ret == true) {
+        freeConsCells (tmp);
+        d->typeflag = INT;
+        d->int_data = result;
+        d->cons = NULL;
+    }
+    return ret;
 }
