@@ -1736,7 +1736,7 @@ bool BI_define (struct Data *d) {
 
     return ret;
 }
-bool BI_lambda_helper (struct Data *d) {
+bool BI_lambda (struct Data *d) {
     bool ret = true;
     int i;
     struct Cons *tmp = d->cons->car->cons->cdr;
@@ -1756,30 +1756,28 @@ bool BI_lambda_helper (struct Data *d) {
     }
 
     tmp = d->cons;
-    d->cons = body->cons;
-    freeConsCell (tmp->car->cons->cdr->cdr);
-    freeConsCell (tmp->car->cons->cdr);
-    freeData (tmp->car->cons->car);
-    freeConsCell (tmp->car->cons);
-    freeData (tmp->car);
-    freeConsCell (tmp);
-    evalS (d);
+    if (is_list (body) == true) {
+        d->cons = body->cons;
+        freeConsCell (tmp->car->cons->cdr->cdr);
+        freeConsCell (tmp->car->cons->cdr);
+        freeData (tmp->car->cons->car);
+        freeConsCell (tmp->car->cons);
+        freeData (tmp->car);
+        freeConsCell (tmp);
+        evalS (d);
+    } else {
+        copyData (body, d);
+        freeConsCells (tmp->car->cons->cdr);
+        freeData (tmp->car->cons->car);
+        freeConsCell (tmp->car->cons);
+        freeData (tmp->car);
+        freeConsCell (tmp);
+        evalAtom (d);
+    }
     if (i != 0) {
         freeDefinePoolS (i);
     }
 
-    return ret;
-}
-bool BI_lambda (struct Data *d) {
-    bool ret = true,f;
-    struct Data *params = d->cons->car->cons->cdr->car,
-                *body = d->cons->car->cons->cdr->cdr->car;
-
-    if ((f = is_list(body)) == true) { 
-        ret = BI_lambda_helper (d);
-    } else {
-        ret = false;
-    }
     return ret;
 }
 bool BI_loop (struct Data *d) {
