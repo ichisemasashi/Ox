@@ -2311,10 +2311,21 @@ bool eval_progn (struct Data *d) {
 }
 int eval_let_helper_set_DefinePools(struct Data *d) {
     struct Cons *p = d->cons, *tmp;
+    struct Data *q;
     int ret = 0;
 
     while (p->cdr != NULL) {
         tmp = DefinePool->cons;
+        q = p->car->cons->cdr->car;
+        if ((is_list (q) == true) &&
+            (compString (q->cons->car->char_data, "lambda") == true)) {
+        } else {
+            if (is_list (q) == true) {
+                evalS (q);
+            } else {
+                evalAtom (q);
+            }
+        }
         DefinePool->cons = p->car->cons;
         freeConsCells(p->car->cons->cdr->cdr);
         p->car->cons = NULL;
