@@ -126,6 +126,7 @@ bool BI_runtime (struct Data *);
 bool BI_display (struct Data *);
 bool BI_newline (struct Data *);
 bool BI_random (struct Data *);
+bool BI_evenp (struct Data *);
 
 struct functionName{
     char name[MAXSTRINGS];
@@ -152,6 +153,7 @@ struct functionName{
     "display", BI_display,
     "newline", BI_newline,
     "random", BI_random,
+    "even?", BI_evenp,
     "",NULL /* terminator */
 };
 void putTokens() {
@@ -2459,5 +2461,19 @@ bool BI_random (struct Data *d) {
         d->int_data = result;
         d->cons = NULL;
     }
+    return ret;
+}
+bool BI_evenp (struct Data *d) {
+    bool ret = true, result = false;
+
+    if (d->cons->cdr->car->typeflag == INT) {
+        if ((d->cons->cdr->car->int_data % 2 ) == 0) {
+            result = true;
+        }
+    }
+    freeConsCells (d->cons);
+    d->cons = NULL;
+    d->typeflag = BOOL;
+    d->bool = result;
     return ret;
 }
