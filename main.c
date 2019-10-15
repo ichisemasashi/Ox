@@ -122,6 +122,9 @@ bool BI_division_float (struct Data *);
 bool BI_modulo (struct Data *);
 bool BI_exp (struct Data *);
 bool BI_log (struct Data *);
+bool BI_sin (struct Data *);
+bool BI_cos (struct Data *);
+bool BI_tan (struct Data *);
 bool BI_runtime (struct Data *);
 bool BI_display (struct Data *);
 bool BI_newline (struct Data *);
@@ -148,6 +151,9 @@ struct functionName{
     "list", BI_list,
     "exp", BI_exp,
     "log", BI_log,
+    "sin", BI_sin,
+    "cos", BI_cos,
+    "tan", BI_tan,
     "mod", BI_modulo,
     "runtime", BI_runtime,
     "display", BI_display,
@@ -2275,6 +2281,99 @@ bool BI_modulo (struct Data *d) {
     if (ret == true) {
         d->typeflag = INT;
         d->int_data = result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
+bool BI_sin (struct Data *d) {
+    bool ret = false;
+    double result;
+    struct Cons *tmp;
+
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        ret = true;
+        if (d->cons->cdr->car->typeflag == INT) {
+            result = sin ((double)d->cons->cdr->car->int_data);
+        } else if (d->cons->cdr->car->typeflag == FLOAT) {
+            result = sin ((double)d->cons->cdr->car->float_data);
+        } else {
+            ret = false;
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = FLOAT;
+        d->float_data = (float)result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
+bool BI_cos (struct Data *d) {
+    bool ret = false;
+    double result;
+    struct Cons *tmp;
+
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        ret = true;
+        if (d->cons->cdr->car->typeflag == INT) {
+            result = cos ((double)d->cons->cdr->car->int_data);
+        } else if (d->cons->cdr->car->typeflag == FLOAT) {
+            result = cos ((double)d->cons->cdr->car->float_data);
+        } else {
+            ret = false;
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = FLOAT;
+        d->float_data = (float)result;
+        tmp = d->cons;
+        d->cons = NULL;
+        freeConsCells (tmp);
+    }
+
+    return ret;
+}
+bool BI_tan (struct Data *d) {
+    bool ret = false;
+    double result;
+    struct Cons *tmp;
+
+    /* parameter check */
+    if (d->cons->cdr == NULL) {
+        ret = false;
+    } else if (d->cons->cdr->cdr->cdr == NULL) {
+        ret = true;
+        if (d->cons->cdr->car->typeflag == INT) {
+            result = tan ((double)d->cons->cdr->car->int_data);
+        } else if (d->cons->cdr->car->typeflag == FLOAT) {
+            result = tan ((double)d->cons->cdr->car->float_data);
+        } else {
+            ret = false;
+        }
+    } else {
+        ret = false;
+    }
+
+    if (ret == true) {
+        d->typeflag = FLOAT;
+        d->float_data = (float)result;
         tmp = d->cons;
         d->cons = NULL;
         freeConsCells (tmp);
