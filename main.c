@@ -1766,12 +1766,13 @@ bool BI_lambda (struct Data *d) {
     tmp = d->cons;
     if (is_list (body) == true) {
         d->cons = body->cons;
-        freeConsCell (tmp->car->cons->cdr->cdr);
-        freeConsCell (tmp->car->cons->cdr);
-        freeData (tmp->car->cons->car);
-        freeConsCell (tmp->car->cons);
-        freeData (tmp->car);
-        freeConsCell (tmp);
+        freeConsCells (tmp->car->cons->cdr->cdr->cdr); /* del NIL cell */
+        freeConsCell (tmp->car->cons->cdr->cdr); /* del above body */
+        freeConsCell (tmp->car->cons->cdr);      /* del above param */
+        freeData (tmp->car->cons->car);  /* del lambda cell */
+        freeConsCell (tmp->car->cons);   /* del above lambda */
+        freeData (tmp->car);   /* del above lambda */
+        freeConsCell (tmp);   /* del above lambda */
         evalS (d);
     } else {
         copyData (body, d);
