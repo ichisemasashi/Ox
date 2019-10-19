@@ -94,6 +94,7 @@ bool BI_cdr (struct Data *);
 bool BI_atom (struct Data *);
 void copyData (struct Data *, struct Data *);
 bool eval_co_each (struct Cons *);
+void eval_try (struct Cons *);
 bool initDefinePood();
 void freeConsCells (struct Cons *);
 void freeConsCell (struct Cons *);
@@ -833,6 +834,19 @@ bool eval_co_each (struct Cons *cons) {
     }
     return ret;
 }
+void eval_try (struct Cons *cons) {
+    int i;
+    bool f;
+    struct Cons *n = cons, *tmp;
+    while ((n != NULL) && (n->cdr!=NULL)) {
+        if ((f = is_list (n->car)) == true) {
+            eval_try (n->car->cons);
+        } else {
+            evalAtom (n->car);
+        }
+        n = n->cdr;
+    }
+}
 bool eval_if (struct Data *d) {
     bool ret = true, f;
     struct Cons *tmpCons;
@@ -965,6 +979,7 @@ bool evalEach (struct Data *d) {
                   (compString (d->cons->car->cons->car->char_data, "LAMBDA") == true))) {
     } else if ((compString (s, "lambda") == true) ||
                (compString (s, "LAMBDA") == true)) {
+        eval_try (d->cons->cdr->cdr);
     } else if ((compString (s, "list") == true) ||
                (compString (s, "LIST") == true)) {
         ret = eval_co_each(d->cons->cdr);
