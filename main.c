@@ -1788,6 +1788,7 @@ bool BI_lambda (struct Data *d) {
         freeConsCell (tmp->car->cons);   /* del above lambda */
         freeData (tmp->car);   /* del above lambda */
         freeConsCell (tmp);   /* del above lambda */
+        eval_try (d->cons);
         evalS (d);
     } else {
         copyData (body, d);
