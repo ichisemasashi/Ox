@@ -5,9 +5,9 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define MAXBUF 0x555555 /* buf size */
-#define MAXTOKEN 0x555555 /* token size */
-#define MAXMEMORY 0x555555
+#define MAXBUF 0x100000 /* buf size */
+#define MAXTOKEN 0x100000 /* token size */
+#define MAXMEMORY 0x100000
 #define MAXSTRINGS 20
 
 static int buf[MAXBUF];
