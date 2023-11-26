@@ -181,6 +181,119 @@ compares the value of x to the constant S-expression "(LIST Y Z)". Because the Q
 
 ## An Interpreter for LISP Recursion Equations
 
+We now have enough machinery to begin our examination of the genetic history of LISP. We first present a complete interpreter for LISP recursion equations. The language interpreted is a dialect of LISP which allows nо free variables except for names of primitive or defined procedures, and no definitions of procedures within other procedures.
+The driver loop reads in definitions of procedures of the form: 
+
+(DEFINE (F A B C ...) <expression in A B C ... and F G H ...>)
+
+and saves them. It can also read in requests to apply some defined procedure to some arguments (or, more generally, to evaluate any expression), in which case it prints the resulting value. An expression may consist of variable references, constants (numbers and quoted S-expressions), procedure calls, and conditional expressions (COND). The defined procedures may refer to each other and to initially supplied primitive procedures (such as CAR, CONS, etc.). Definitions may contain "forward references", as long as all necessary definitions are present at the time of a request for computation. The interpreter itself is presented here as a set of such definitions, and so is meta-circular. 
+The language is intended to be evaluated in applicative order; that is, all arguments to a procedure are fully evaluated before an attempt is made to apply the procedure to the arguments. (It is necessary to state this explicitly here, as it is not inherent in the form of the meta-circular definition. See [Reynolds] for an explication of this problem.) The driver loop (see Figure 1) is conceptually started by a request to invoke DRIVER with no arguments. Its task is to first print the message "LITHP ITH LITHTENING" (a tradition of sorts) and then invoke DRIVER-LOOP. The expression <THE-PRIMITIVE-PROCEDURES> is intended to represent a constant list structure, containing definitions of primitive procedures, to be supplied to DRIVER-LOOP. 
+
+```lisp
+(DEFINE (DRIVER)
+        (DRIVER-LOOP <THE-PRIMITIVE-PROCEDURES> (PRINT '|LITHP TIH LITHTENING|)
+
+(DEFINE (DRIVER-LOOP PROCEDURES HUNOZ)
+        (DRIVER-LOOP1-PROCEDURES (READ)))
+
+(DEFINE (DRIVER-LOOP-1 PROCEDURES FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP PROCEDURES (PRNIT (EVAL FORM '() PROCEDURES))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP (BIND (LIST (CAADR FORM)
+                                  (LIST (LIST (CDADR FORM) (CADR FORM)))
+                                  PROCEDURES)
+                            (PRINT (CAADR FORM)))))
+              (T (DRIVER-LOOP PROCEDURES (PRINT (EVAL FORM '() PROCEDURES))))))
+Figure 1
+Top Level Driver Loop for a Recursion Equations Interprete
+```
+
+DRIVER-LOOP reads an S-expression from the input stream and passes it, along with the current procedure definitions, to DRIVER-LOOP-1. This procedure in turn determines whether the input S-expression is a definition. If it is, then it uses BIND (described below) to produce an augmented set of procedure definitions, prints the name of the defined procedure, and calls DRIVER-LOOP to repeat the process. The augmented set of procedures is passed to DRIVER-LOOP, and so the variable PROCEDURES always contains all the accumulated definitions ever read. If the input 
+input S-expression is not a definition, then it is given to the evaluator EVAL, whose purpose is to determine the values of expressions. {Note Value Quibble) The set of currently defined procedures is also passed to EVAL. 
+The process carried on by the driver loop is often called the "top level"; all user programs and requests are run "under" it. The growing set of procedure definitions is called the "top-level environment"; this environment changes in the course of the user interaction, and contains the state of the machine as perceived by the user. It is within this environment that user programs are executed. 
+
+```lisp
+(DEFINE (EVAL EXP ENV PROCEDURES)
+        (COND ((ATOM EXP)
+               (COND ((EQ EXP 'NIL) 'NIL)
+                     ((EQ EXP 'T) 'T)
+                     ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (COR EXP) ENV PROCEDURES))
+              (T (APPLY (VALUE (CAR EXP) PROCEDURES)
+                        (EVLIS (CDR EXP) ENV PROCEDURES)
+                        PROCEDURES))))
+
+(DEFINE (APLY FUN ARGS PROCEDURES)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              (T (EVAL (CADR FUN)
+                       (BIND (CAR FUN) ARGS '())
+                       PROCEDURES))))
+
+(DEFINE (ECOND CLAUSES ENV PROCEDURES)
+        (COND ((NULL CLAUSES) (ERROR))
+              ((EVAL (CAAR CLAUSES) ENV PROCEDURES)
+               (EVAL (CADAR CLAUSES) ENV PROCEDURES))
+              (T (EVCOND (CDR CLAUSES) ENV PROCEDURES))))
+
+(DEFINE (EVLIS ARGLIST ENV PROCEDURES)
+        (COND ((NULL ARGLIST) '())
+              (T (CONS (EVAL (CAR ARGLIST) ENV PROCEDURES)
+                       (EVLIS (CDR ARGLIST) ENV PROCEDURES)))))
+
+Figure 2
+Evaluator for a Recursion Equations Interpreter
+```
+
+The evaluator proper (see Figure 2) is divided into two conceptual components: EVAL and APPLY. EVAL classifies expressions and directs their evaluation. Simple expressions (such as constants and variables) can be evaluated directly. For the complex case of procedure invocations (technically called "combinations"), EVAL looks up the procedure definition, recursively evaluates the arguments (using EVLIS), and then calls APPLY. APPLY classifies procedures and directs their application. Simple procedures (primitive operators) are applied directly. For the complex case of user-defined procedures, APPLY uses BIND to build an environment, a kind of symbol table, associating the formal parameters from the procedure definition with the actual argument values provided by EVAL. The body of the procedure definition is then passed to EVAL, along with the environment just constructed, which is used to determine the values of variables occurring in the body. 
+In more detail, EVAL is a case analysis on the structure of the S-expression EXP. If it is an atom, there are several subcases. The special atoms T and NIL are defined to evaluate to T and NIL (this is strictly for convenience, because they are used as truth values). Similarly, for convenience numeric atoms evaluate to themselves. (These cases could be eliminated by requiring the user to write lots of QUOTE forms: 'T, 'NIL, '43, etc. This would have been quite inconvenient in early LISP, before notation had been introduced; one would have had to write (QUOTE 43), etc.) Atomic symbols, however, encode variables; the value associated with that symbol is extracted from the environment ENV using the function VALUE (see below). 
+If the expression to be evaluated is not atomic, then it may be a QUOTE form, a COND form, or a combination. For a QUOTE form, EVAL extracts the S-expression constant using CADR. Conditionals are handled by EVCOND, which calls EVAL on a predicate expression; if the predicate is true, EVCOND evaluates the corresponding result expression (by calling EVAL, of course); if the predicate is false, EVCOND calls itself to test the predicate of the next clause of the COND body. For combinations, the procedure is obtained, the arguments evaluated the arguments evaluated (using EVLIS), and APPLY called as described earlier. Notice that VALUE is used to get the procedure definition from the set PROCEDURES; we can do this because, as an engineering trick, we arrange for ENV and PROCEDURES to have the same structure, because they are both symbol tables. 
+EVLIS is a simple recursive function which calls EVAL on successive arguments in ARGLIST and produces a list of the values in order. 
+APPLY distinguishes two kinds of procedures: primitive and user-defined. For now we avoid describing the precise implementation of primitive procedures by assuming the existence of a predicate PRIMOP which is true only of primitive procedures, and a function PRIMOP-APPLY which deals with the application of such primitive procedures. (See {Note Primitive Operators} for the details of a possible implementation of PRIMOP and PRIMOP-APPLY.) We consider primitive 
+primitive procedures to be a kind of atomic S-expression other than numbers and atomic symbols; we define no particular written notation for them here. However, primitive procedures are not to be confused with the atomic symbols used as their names. The result of (VALUE 'CAR PROCEDURES) is not the atomic symbol CAR, but rather some bizarre object which is meaningful only to PRIMOP-APPLY. 
+User-defined procedures are represented here as lists. These lists are constructed by DRIVER-LOOP-1. The car of the list is the list of formal parameters, and the cadr is the body of the definition. 
+
+```lisp
+(DEFINE (BIND VARS ARGS ENV)
+        (COND ((= (LENGTH VARS) (LENGTH ARGS))
+               (CONS (CONS VARS ARGS) ENV))
+              (T (ERROR))))
+
+(DEFINE (VALUE NAME ENV)
+        (VALUE1 NAME (LOOKUP NAME ENV)))
+
+(DEFINE (VALUE1 NAME SLOT)
+        (COND ((EQ SLOT '&UNBOUND) (ERROR))
+              (T (CAR SLOT))))
+
+(DEFINE (LOOKUP NAME ENV)
+        (COND ((NULL ENV) '&UNBOUND)
+              (T (LOOKUP1 NAME (CAAR ENV) (CDAR ENV) ENV))))
+
+(DEFINE (LOOKUP1 NAME VARS VALS ENV)
+        (COND ((NULL VARS) (LOOKUP NAME (CDR ENV)))
+              ((EQ NAME (CAR VARS)) VALS)
+              (T (LOOKUP1 NAME (CDR VARS) (CDR VALS) ENV))))
+
+Figure 3
+Utility Routines for Maintaining Environments
+```
+
+The interpreter uses several utility procedures for maintaining symbol tables (see Figure 3). A symbol table is represented as a list of buckets; each bucket is a list whose car is a list of names and whose cdr is a list of corresponding values. {Note This ain't A-lists) If a variable name occurs in more than one bucket, the leftmost such bucket has priority; in this way new symbol definitions added to the front of the list can supersede old ones. 
+BIND takes a list of names, a list of values, and a symbol table, and produces a new symbol table which is the old one augmented by an extra bucket containing the new set of associations. (It also performs a useful error check LENGTH returns the length of a list.) 
+VALUE is essentially an interface to LOOKUP. We define it because later, in Part Three, we will want to use different versions of VALUE1 without changing the underlying algorithm in LOOKUP. The check for &UNBOUND catches incorrect references to undefined variables. 
+LOOKUP takes a name and a symbol table, and returns that portion of a bucket whose car is the associated value. (This definition will be more useful later than one in which the value itself is returned.) 
+Note carefully the use of the variable PROCEDURES in the interpreter. When DRIVER-LOOP-1 calls EVAL it passes the current list of defined procedures (both primitive and user-defined). DRIVER-LOOP-1 is the only routine which augments the value of PROCEDURES, and this value is only used in EVAL, when it is passed to VALUE. However, all of the routines APPLY, EVCOND, and EVLIS have to know about PROCEDURES, and dutifully pass it along so that it may be eventually used by EVAL. The set of definitions must be passed along because there is no provision for free variables or side effects; there is no way to have "memory" or "state" other than in passed variables. The absence of free variables effectively causes language to be referentially transparent. However, we sense a disturbing lack of modularity in the use of PROCEDURES (and, to a lesser extent, in the use of ENV look at EVCOND and EVLIS). We will return to this point later.
+Our recursion equations language has no special iteration or looping constructs, such as the Algol for statement or the FORTRAN DO loop. All loops are constructed by arranging for recursive procedures to call themselves or each other. For example, EVCOND (see Figure 2) iterates over the clauses of a COND by calling itself on successive "tails" of the list of clauses. Now such recursive calls may strike the reader familiar with other languages (such as Algol, FORTRAN, PL/I, etc.) on an intuitive level as being rather inefficient for implementing real programs. Even granted that calls might be made fast, they would seem to consume space in the form of return addresses and other control information. Examination of the recursion equations evaluator will show, however, that this phenomenon does not have to occur. This is because no extra information is saved if there is nothing left to do on return from a recursive call. See [SCHEME] and [Debunking] for a more thorough discussion of this.
+
+
+# Part One - Variable Scoping Disciplines
+
+## Procedures as Data
 
 
 
@@ -193,3 +306,50 @@ compares the value of x to the constant S-expression "(LIST Y Z)". Because the Q
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Local Procedures
+## Lexical Scoping
+## Top Levels versus Referential Transparency
+# Part Two - State
+## Decomposition of State
+## Side Effects and Local State
+## Side Effects in the Interpreter
+## Equipotency of SETQ and RPLACA
+## Side Effects and Equality
+## Dynamic Scoping as a State-Decomposition Discipline
+# Summary
+# Acknowledgements
+# Notes
+## {Can George do Better?}
+## {Debugging}
+## {Driver Loop with Side Effects}
+## {EVALQUOTE }
+## {Gaussian}
+## {LABELS}
+## {LABELS with Side Effects} *
+## {Primitive Operators}
+## {PROGN Wizardry )
+## {QUOTE Mapping}
+## {QUOTE Shafts the Compiler}
+## {RPLACA Can Alter CAR Instead}
+## {S-expression Postulates and Notation}
+## {This ain't A-lists}
+## {Value Quibble}
+## {Weber}
+## {Y-operator}
+# References
