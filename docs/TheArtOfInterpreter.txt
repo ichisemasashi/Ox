@@ -295,35 +295,208 @@ Our recursion equations language has no special iteration or looping constructs,
 
 ## Procedures as Data
 
+The simple LISP described in Part Zero can be a pleasant medium for encoding rather complex algorithms, including those of symbolic mathematics. Often lists are used for representing such structures as the set of coefficients of a polynomial or coordinates of a space vector. Many problems require one to perform an operation on each element of a list and produce a new list of the results. For example, it may be useful to make a list of the squares of each of the elements in a vector. We would write this as follows: 
+
+(DEFINE (SQUARELIST L)
+        (COND ((NULL L) '())
+              (T (CONS (SQUARE (CAR L))
+                       (SQUARELIST (CDR L))))))
+
+We find ourselves writing this pattern over and over again:
 
 
+(DEFINE (fLIST L)
+        (COND ((NULL L) '())
+              (T (CONS (f (CAR L))
+                       (fLIST (CDR L))))))
 
+where f is a function defined on the elements of our list. It would be nice to be able to define an entity of the programming language which would capture this abstract pattern. The "obvious" solution is to write the variable function as a functional variable which can be accepted as argument: 
 
+(DEFINE (MAPCAR F L)
+        (COND ((NULL L) '())
+              (T (CONS (F (CAR L))
+                 (MAPCAR F (CDR L))))))
 
+(MAPCAR is the traditional name of this abstraction.) Using this we could say: 
 
+(MAPCAR SQUARE (1 2 3)) 
 
+Unfortunately, this will not work in our recursion equations interpreter. Why not? 
+The essence of the problem is that our interpreter segregates procedures from other kinds of objects. We refer to F as a procedure but it was passed in as a variable. Procedures are only looked up in the PROCEDURES symbol table, but variables are bound in ENV. Moreover, in the call to MAPCAR, SQUARE is used as a variable, which is looked up in ENV, but its definition is only available in PROCEDURES. 
+Let's merge the two symbol tables... How could that hurt? 
 
+```lisp
+(DEFINE (DRIVER-LOOP-1 ENV FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP (BIND (LIST (CAADR FORM))
+                                  (LIST (LIST '&PROCEDURE (CDADR FORM) (CADDR FORM)))
+                                  ENV)
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))))
 
+For DRIVER-LOOP see Figure 1.
+For EVAL see Figure 5.
+For BIND see Figure 3.
 
+Figure 4
+Modified Driver Loop for Treating Procedures as Objects
+```
 
+We will eliminate PROCEDURES, and use ENV to contain both procedures and other objects. The driver loop requires no particular changes (see Figure 4), except for eliminating the argument () in the calls to EVAL. We will change the name PROCEDURES to ENV throughout as well, but of course that isn't logically necessary, because our language is referentially transparent. (Snicker!) (Note EVALQUOTE} 
+(We have introduced a funny object &PROCEDURE which we use to flag procedural objects. In the previous interpreter it was impossible for the user to request application of an object which was not either a primitive operator or a procedure produced by a DEFINE form. Now that procedures mingle freely with other data objects, it is desirable to be able distinguish them, e.g. for e.g. for error checking in APPLY. We also have some deeper motivations having to do with avoiding the confusion of a procedure with its textual representation, but we do not want to deal with this issue yet.) 
+To fix up the evaluator, we eliminate all occurrences of PROCEDURES. In EVAL, where the name of a procedure in a combination is looked up, we change it to perform the lookup in ENV. Finally, there is a problem in APPLY: if the call to EVAL to evaluate the body is simply 
 
+(EVAL (CADDR FUN)
+      (BIND (CADR FUN) ARGS '()))
 
+then the new ENV given to EVAL does not have the procedure definitions in it. Moreover, APPLY does not even have access to an environment which contains the procedure definitions (because its parameter PROCEDURES was deleted)! We can easily fix this. When APPLY is called from EVAL, ENV can be passed along (as PROCEDURES used to be), and the call to EVAL from APPLY can be changed to 
 
+(EVAL (CADDR FUN)
+      (BIND (CADR FUN) ARGS ENV))
 
+In this way the environment passed to EVAL will contain the new variable bindings added to the old environment containing the procedure definitions. (See Figure 5.) This is indeed a good characteristic: if the name of a defined procedure is used as a local variable (procedural or otherwise), the new binding takes precedence locally, temporarily superseding the global definition. 
 
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV)))) 
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              (T (APPLY (VALUE (CAR EXP) ENV)
+                        (EVLIS (CDR EXP) ENV)
+                        ENV))))
 
+(DEFINE (APPLY FUN ARGS ENV)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (EVAL (CADDR FUN)
+                     (BIND (CADR FUN) ARGS ENV)))
+              (T (ERROR))))
 
+(DEFINE (ECOND CLAUSES ENV)
+        (COND ((NULL CLAUSES) (ERROR))
+              ((EVAL (CAAR CLAUSES) ENV)
+               (EVAL (CADAR CLAUSES) ENV))
+              (T (EVCOND (CDR CLAUSES) ENV))))
 
+(DEFINE (EVLIS ARGLIST ENV)
+        (COND ((NULL ARGLIST) '())
+              (T (CONS (EVAL (CAR ARGLIST) ENV)
+                       (EVLIS (CDR ARGLIST) ENV)))))
 
+For VALUE and BIND see Figure 3.
 
+Figure 5
+Evaluator for Treating Procedures as Objects
+```
 
-
-
-
+Another good thing about this version of the interpreter is that gross non-modularity of the scattered occurrences of PROCEDURES has disappeared. The problem has not been solved, of course, but we certainly feel relieved that the particular manifestation has been removed! 
+By the way, we also eliminated the explicit tests for 1 and NIL in EVAL, assuming that we can simply put their initial values in the initial environment provided by DRIVER. 
+An interesting property of this interpreter is that free variables now have been given a meaning, though we originally did not intend this. Indeed, in the original recursion equations interpreter, there were free variables in a sense: all procedural variables were free (but they could be used only in operator position in a combination). In our new interpreter, thanks to the merging of the procedural and variable environments, we may have not only bound procedure names, but also free variable names, for after all the two kinds of names are now one. 
+This interpreter differs in only small details from the one in LISP 1.5 [LISP 1.5M]. Both have dynamically scoped free variables (we will elaborate on this point later). We might note that the reference to VALUE in EVAL when computing the first argument for APPLY can be replaced by a reference to EVAL; this does the same thing if a variable appears in the operator position of a combination, and allows the additional general ability to use any expression to compute the procedure. This difference in fact appears in the LISP 1.5 interpreter. There are other slight differences, such as the representation of primitive operators and the handling of procedures which are not primitive or user-defined. Aside from these, the greatest difference between our interpreter and LISP 1.5's is the use of lambda notation. This we will meet in the next section.
 
 
 ## Local Procedures
+
+We now have the ability to define and use the MAPCAR procedure. After some more experience in programming, however, we find that, having abstracted the common pattern from our loops, that the remaining part (the functional argument) tends to be different for each invocation of MAPCAR. Unfortunately, our language for all practical purposes requires that we use a name to refer to the functional arguments, because the only way we have to denote new procedures is to DEFINE names for them. We soon tire of thinking up new unique names for trivial procedures:
+
+(DEFINE (FOOBAR-43 X) (* (+ X 4) 3))
+
+... (MAPCAR FOOBAR-43 L)
+
+We run the risk of name conflicts; also, it would be nice to be able to write the procedure definition at the single point of use. 
+More abstractly, given that procedures have become referenceable objects in the language, it would be nice to have a notation for them as objects, or rather a way to write an S-expression in code that would evaluate to a procedure. LISP [LISP 1M] adapted such a notation from the A-calculus of Alonzo Church [Church]:
+
+(LAMBDA <variables> <body>)
+
+Comparing this with the DEFINE notation, we see that it has the same parts: a keyword so that it can be recognized; a list of parameters; and a body. The only difference is the omission of an irrelevant name. It is just the right thing. 
+Given this, we can simply write 
+
+(MAPCAR (LAMBDA (X) (* X X)) L) 
+
+rather than having to define SQUARE as a separate procedure. An additional benefit is that this notation makes it very easy for a compiler to examine this code and produce an efficient iterative implementation, because all the relevant code is present locally (assuming the compiler knows about MAPCAR). 
+Installing this notation requires only a two-line change in EVAL (see Figure 6). 
+
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (CONS '&PROCEDURE (CDR EXP)))
+              (T (APPLY (EVAL (CAR EXP) ENV)
+                        (EVLIS (CDR EXP) ENV)
+                        ENV))))
+
+For VALUE see Figure 3.
+For APPLY, EVCOND, and EvLIs see Figure 5.
+
+Figure 6
+Evaluator for LAMBDA-notation (Dynamically Scoped)
+```
+
+(The reader might have noticed that all EVAL does for a LAMBDA- expression is replace the word LAMBDA with the word &PROCEDURE, and that we could avoid that work by uniformly using LAMBDA instead of &PROCEDURE as the flag for a procedural object. Given then that EVAL ON a LAMBDA-expression is an identity operation, we can eliminate the handling of LAMBDA İN EVAL merely by requiring the user to write '(LAMBDA .) instead of (LAMBDA .). Although the implementors of most LISPs have in fact done just this ever since LISP1 it is a very bad idea. EVAL is supposed to process expressions and produce their values, and the fact that it might be implemented as an identity operation is no business of the user. The confusion between a procedural object and an expression having that object as its value will lead to serious trouble. (Imagine confusing 15 with (+78), and trying to take the car of the former instead of the latter, or trying to add 3 to the latter instead of the former!) The quoted LAMBDA- expression engineering trick discourages the implementation of a referentially transparent LISP. In Part Four we will see the extreme difficulties for a LISP compiler (or other program-understander) caused by the blatant destruction of referential transparency. {Note QUOTE Shafts the Compiler}) 
+The ability to use free variables and local procedures gives us additional freedom to express interesting procedures. For example, we can define a procedure SCALE which multiplies a vector of arbitrary length by a scalar. If the vector is represented as a list of components, then we can use MAPCAR and a local procedure with a free variable: 
+
+(DEFINE (SCALE S V)
+        (MAPCAR (LAMBDA (X) (* X S))
+                V))
+
+Everything would be just peachy keen, except for one small glitch. Suppose that the programmer who wrote SCALE for some reason chose the name L rather than s to represent the scalar: 
+
+(DEFINE (SCALE L V) 
+        (MAPCAR (LAMBDA (X) (* X L))
+                V))
+
+Although the version with s works, the version with L does not work. This happens because MAPCAR also uses the name for one of its arguments (that is, a "local" variable). The reference to in the LAMBDA-expression in SCALE refers to the bound in MAPCAR and not to the one bound by SCALE. In general, free variable references in one procedure refer to the bindings of variables in other procedures higher up in the chain of calls. This discipline is called dynamic scoping of variables, because the connection between binding and reference is established dynamically, changing as different procedures are executed. 
+That the behavior of the SCALE program depends on the choice of names for its local variables is a violation of referential transparency. The modularity of the MAPCAR abstraction has been destroyed, because no one can use that abstraction without understanding the details of its implementation. This is the famous "FUNARG problem" [Moses] [LISP History]. 
+If we are to avoid such conflicts between different uses of the same name, we must arrange our language so that the choice of names locally cannot have global repercussions. More specifically, we must have the ability to bind a variable in such a way that it will have a truly local meaning (though in general we might not want all variables to be strictly local we will consider later the possibility of having several types of variables). 
+
+
 ## Lexical Scoping
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Top Levels versus Referential Transparency
 # Part Two - State
 ## Decomposition of State
