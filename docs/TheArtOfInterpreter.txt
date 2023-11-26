@@ -122,5 +122,74 @@ is a list of three things: the atomic symbol DEFINE, a list of the two atomic sy
 We can use S-expressions to represent algebraic expressions by using "Cambridge Polish" notation, essentially a parenthesized version of prefix Polish notation. Numeric constants are encoded as numeric atoms; variables are encoded as non-numeric atoms (which henceforth we will call atomic symbols); and procedure invocations are encoded as lists, where the first element of the list represents the procedure and the rest represent the arguments. For example, the algebraic expression "a*b+c*d" can be represented as "(+ (* a b) (* c d))". Notice that LISP does not need the usual precedence rules concerning whether multiplication or addition is performed first; the parentheses explicitly define the order. Also, all procedure invocations have a uniform syntax, no matter how many arguments are involved. Infix, superscript, and subscript notations are not used; thus the expression "Jp(x^2+1)" would be written "(J p (+ (* × 2) 1))". 
 To encode a conditional expression 
 
-[p_1 → e_1;p_2 → e_2; ... ;p_N → e_N]
+[p_1 → e_1; p_2 → e_2; ... ; p_N → e_N]
+
+(which means to evaluate the predicates p_j in order until a in order until a true one is found, at which point the value of e_j is taken to be the value of the conditional) we write the S-expression
+
+(COND (P1 e1) (p2 e2) ... (pn en))
+
+We can now encode sets of LISP recursion equations as S-expressions. For the equation 
+
+factorial[x] = [x=0 → 1; T→ x*factorial[x-1]]
+
+we write the S-expression
+
+(DEFINE (FACTORIAL X)
+           (COND ((= X 0) 1)
+                 (T (* X (FACTORIAL ( X 1))))))
+
+
+(We could also have written 
+
+(DEFINE (FACTORIAL X) (COND ((=
+X 0) 1) (T (* X (FACTORIAL (- X
+1))))))
+
+but we conventionally lay out S-expressions so that they are easy to read.) 
+We now have a complete encoding for algebraic expressions and LISP recursion equations in the form of S-expressions. Suppose that we now want to write a LISP program which will take such an S-expression and perform some useful operation on it, such as determining the value of an algebraic expression. We need some procedures for distinguishing, decomposing, and constructing S-expressions. 
+The predicate ATOM, when applied to an S-expression, produces true when given an atom and false otherwise. The empty list is considered to be an atom. The predicate NULL is true of only the empty list; its argument need not be a list, but may be any S-expression. The predicate NUMBERP is true of numbers and false of atomic symbols and lists. The predicate EQ, when applied to two atomic symbols, is true if the two atomic symbols are identical. It is false when applied to an atomic symbol and any other S-expression. (We have not defined EQ on two lists yet; this will not become important, or even meaningful, until we discuss side effects.) 
+The decomposition operators for lists are traditionally called CAR and COR for historical reasons. [LISP History] CAR extracts the first element of a list, while COR produces a list containing all elements but the first. Because compositions of CAR and CDR are commonly used in LISP, an abbreviation is provided: all the C's and R's in the middle can be squeezed out. For example, "(CDR (CDR (CAR (CDR X))))" can be written as "(CDDADR X)". 
+The construction operator CONS, given an S-expression and a list, produces a new list whose car is the S-expression and whose cdr is the list. The operator LIST can take any number of arguments (a special feature), and produces a list of its arguments. 
+We can now write some interesting programs in LISP to deal with S-expressions. For example, we can write a predicate EQUAL, which determines whether two S-expressions have the same CAR-CDR structure: 
+
+
+(DEFINE (EQUAL X Y)
+           (COND ((NUMBERP X)
+                  (COND ((NUMBERP Y) (= X Y))
+                        (T NIL)))
+                 ((ATOM X) (EQ X Y))
+                 ((ATOM Y) NIL)
+                 ((EQUAL (CAR X) (CAR Y))
+                  (EQUAL (COR X) (CDR Y)))))
+
+Here we have used the standard names T and NIL to represent true and false. (Traditionally NIL is also considered to be the empty list, but we will avoid this here, writing "()" for the empty list.) 
+Because LISP programs are represented as LISP data structures (S-expressions), there is a difficulty with representing constants. For example, suppose we want to determine whether or not the value of the variable x is the atomic symbol "FOO". We might try writing:
+
+(EQ X FOO)
+
+This doesn't work. The occurrence of "FOO" does not refer to the atomic symbol FOO as a constant; it is treated as a variable, just as "x" is. 
+The essential problem is that we want to be able to write any S-expression as a constant in a program, but some S-expressions must be used to represent other things, such as variables and procedure invocations. To solve this problem we invent a new notation: (QUOTE x) in a program represents the constant S-expression x. {Note QUOTE Mapping) Thus we can write our test as "(EQ X (QUOTE FOO))". Similarly, 
+
+(EQUAL X (LIST Y Z))
+
+constructs a list from the values of y and z, and compares the result to the value of x, while
+
+(EQUAL X (QUOTE (LIST Y Z))) 
+
+compares the value of x to the constant S-expression "(LIST Y Z)". Because the QUOTE Construction is used so frequently in LISP, we use an abbreviated notation: "'FOO" is equivalent to "(QUOTE FOO)". This is only a notational convenience; the two notations denote the same S-expression. (S-expressions are not character strings, but data objects with a certain structure. We use character strings to notate S-expressions on paper, but we can use other notations as well, such as little boxes and arrows. We can and do allow several different character strings to denote the same S-expression.) 
+
+
+## An Interpreter for LISP Recursion Equations
+
+
+
+
+
+
+
+
+
+
+
+
 
