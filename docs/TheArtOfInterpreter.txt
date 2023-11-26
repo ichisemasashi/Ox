@@ -1,0 +1,126 @@
+
+The Art of the Interpreter or, The Modularity Complex (Parts Zero, One, and Two)
+
+by
+Guy Lewis Steele Jr. and Gerald Jay Susman
+
+May 1978
+
+
+Abstract:
+We examine the effects of various language design decisions on the programming styles available to a user of the language, with particular emphasis on the ability to incrementally construct modular systems. At each step we exhibit an interactive meta-circular interpreter for the language under consideration. Each new interpreter is the result of an incremental change to a previous interpreter.
+We explore the consequences of various variable binding disciplines a n dt h e introduction of side effects. We find that dynamic scoping is unsuitable for constructing procedural abstractions, but has another role as an agent of modularity, being a structured form of side effect.
+More general side effects are also found to be necessary to promote modular style. We find that the notion of side effect and the notion of equality (object identity) are mutually constraining; to define one is to define the other.
+The interpreters we exhibit are all written in a simple dialect of LISP, and all implement LISP-like languages. A subset of these interpreters constitute a partial historical reconstruction of the actual evolution of LISP.
+
+Keywords: abstraction, actors, applicative order, bindings, control structures, debugging, dynamic scoping, environments, fluid variables, FUNARG problem, functional objects, interactive programming, lambda-calculus, lexical scoping, LISP, modularity, procedural data, recursion equations, referential transparency, SCHEME, side effects, static scoping, structured programming
+
+This report describes research
+done at the Artificial Intelligence Laboratory of the Nassachusetts Institute of Technology. Support for the laboratory's artificial intelligence research is provided in part by the Advanced Research Projects Agency of the Department of Defense under Office of Naval Research contract N00014-75-C-0643.
+
+
+Contents
+Introduction
+	Modularity
+	LISP-like Languages
+	Structure of the Paper
+Part Zero - LISP and Interpreters
+	Recursion Equations
+	An Interpreter for LISP Recursion Equations
+Part One - Variable Scoping Disciplines
+	Procedures as Data
+	Local Procedures
+	Lexical Scoping
+	Top Levels versus Referential Transparency
+Part Two - State
+	Decomposition of State
+	Side Effects and Local State
+	Side Effects in the Interpreter
+	Equipotency of SETQ and RPLACA
+	Side Effects and Equality
+	Dynamic Scoping as a State-Decomposition Discipline
+Summary
+Acknowledgements
+Notes
+	{Can George do Better?}
+	{Debugging}
+	{Driver Loop with Side Effects}
+	{EVALQUOTE }
+	{Gaussian}
+	{LABELS}
+	{LABELS with Side Effects} *
+	{Primitive Operators}
+	{PROGN Wizardry )
+	{QUOTE Mapping}
+	{QUOTE Shafts the Compiler}
+	{RPLACA Can Alter CAR Instead}
+	{S-expression Postulates and Notation}
+	{This ain't A-lists}
+	{Value Quibble}
+	{Weber}
+	{Y-operator}
+References
+
+
+
+
+
+# Introduction
+
+## Modularity
+
+The entities constructed by programming are extremely complex. Accurate construction of large programs would be impossible without specific techniques for controlling this complexity. Most such techniques are based on finding ways to decompose a problem into almost independently surprobelm uber ene, loring i erase to onc surat mes are solved, the programmer must be able to combine the solutions with a minimum of unanticipated interactions. To the extent that a decomposition succeeds i n breaking a programming problem into manageable pieces, we say that the resulting program is modular; each part of the solution is called a module. Well-designed programming languages provide features which support the construction of modular programs.
+One decomposition strategy is the packaging of common patterns of the use of a language. For example, in Algol a for loop captures a common pattern of if and goto statements. Packages of common patterns are not necessarily merely abbreviations to save typing. While a simple abbreviation has little abstraction power because a user must know what the abbreviation expands into, a good package encapsulates a higher level concept which has meaning independent of its implementation. Once a package is constructed the programmer can use it directly, without regard for the details it contains, precisely because it corresponds to a single notion he uses in dealing with the programming problem.
+A package is most useful if its behavior is independent of the context of its use, thus reducing possible interference with other packages. package is called referentially transparent. Intuitively, referential transparency requires that the meanings of parts of a program be apparent and not change, so that such meanings can be reliably depended upon. In particular, names internal to one module should not affect or be affected by other modules - the external behavior of a module should be independent of the choice of names for its local identifiers.
+To make a modular program , it is often necessary to think of a computational process as having state. In such cases, if the state can be naturally divided into independent parts, an important decomposition may be the division of the program into pieces which separately deal with the parts of the state.
+We will discuss various stylistic techniques for achieving modularity. One would expect these techniques to complement each other. We will instead discover that they can come into conflict. Pushing one to an extreme in a language can seriously compromise others.
+
+
+
+## LISP-like Languages 
+
+Of the hundreds or thousands of computer languages which have been invented, there is one particular family of languages whose common ancestor was the original LISP, developed by McCarthy and others in the late 1950's. [LISP History] These languages are generally characterized by a simple, fully parenthesized ("Cambridge Polish") syntax; the ability to manipulate general, linked-list data structures; a standard representation for programs of the language in terms of these structures; and an interactive programming system based on an interpreter for the standard representation. Examples of such languages are LISP 1.5 [LISP 1.5M], MacLISP [Moon], InterLISP [Teitelman], CONNIVER [McDermott and Sussman], QA4 [Rulifson], PLASMA [Smith and Hewitt] [Hewitt and Smith], and SCHEME [SCHEME] [Revised Report]. We will call this family the LISP-like languages. 
+The various members of this family differ in some interesting and often subtle ways. These differences have a profound impact on the styles of programming each may encourage or support. We will explore some of these differences by examining a series of small ("toy") evaluators which exhibit these differences without the clutter of "extra features" provided in real, production versions of LISP-like language systems. 
+The series of evaluators to be considered partially constitute a reconstruction of what we believe to be the paths along which the family evolved. These paths can be explained after the be explained after the fact by viewing the historical changes to the language as being guided by the requirements of various aspects of modularity. 
+
+
+## Structure of the Paper
+
+Our discussion is divided into several parts, which form a linear progression. In addition, there are numerous large digressions which explore interesting side developments. These digressions are placed at the end as notes, cross-referenced to and from the text.
+We exhibit a large number of LISP interpreters whose code differs from one to another in small ways (though their behavior differs greatly!). to avoid writing identical pieces of code over and over, each figure exhibits only routines which differ, and also contains cross-references to preceding figures from which missing routines for that figure are to be drawn.
+Part Zero introduces the restricted dialect of the LISP language in which most of our examples are written. It also discusses the basic structure of an interpreter, and exhibits a meta-circular interpreter for the language.
+Part One introduces procedural data as an abstraction mechanism, and considers its impact on variable scoping disciplines in the language. We are forced through a series of such disciplines as unexpected interactions are uncovered and fixed. Interpreters are exhibited for dynamic scoping and lexical scoping.
+Part Two considers the problems associated with the decomposition of state. Side effects are introduced as a mechanism for effecting such decompositions. We find that the notion of side effect is inextricably wound up with the notion of identity. Dynamic scoping is retrospectively viewed as a restricted kind of side effect. 
+With this we summarize and conclude with many tantalizing questions yet unanswered. 
+In Part Three (in a separate paper) we will find that the introduction of side effects forces the issue of the order of evaluation of expressions. We will contrast call-by-name and its variants with call-by-value, and discuss how these control disciplines arise as a consequence of different models of packaging. In particular, call-by-name arises naturally from the syntactic nature of the Algol 60 copy rule. As before, many little interpreters for these disciplines will be exhibited. 
+In Part Four we will be led to generalize the notion of a syntactic package. We will discuss meta-procedures, which deal with the representations of procedures. The distinction between a procedure and its representation will be more carefully considered. Macro processors, algebraic simplifiers, and compilers will be considered as meta-procedures. Various interpreters, compilers, and simplifiers will be exhibited. 
+
+
+
+
+# Part Zero LISP and Interpreters 
+
+## Recursion Equations
+
+Contrary to popular belief, LISP was not originally derived from Church's X-calculus [Church] [LISP History]. The earliest LISP did not have a well-defined notion of free variables or procedural objects. Early LISP programs were similar to recursion equations, defining functions on symbolic expressions ("S-expressions"). They differed from the equations of pure recursive function theory [Kleene] by introducing the conditional expression construction (often called the "McCarthy conditional"), to avoid "pattern-directed invocation". That is, in recursive function theory one would define the factorial function by the following two equations: 
+
+factorial(0) = 1 
+factorial(successor(x)) = successor(x)*factorial(x) 
+
+In early LISP, however, one would have written: 
+
+factorial[x] = [x=0 → 1; T→ x*factorial[x-1]] 
+
+where "[a → b; T→ c]" essentially means "if a then b else c". The recursive function theory version depends on selecting which of two equations to use by matching the argument to the left-hand sides (such a discipline is actually used in the PROLOG language [Warren]); the early LISP version represents this decision as a conditional expression. 
+The theory of recursion equations deals with functions over the natural numbers. In LISP, however, one is interested in being able to manipulate algebraic expressions, programs, and other symbolic expressions as data structures. While such expressions can be encoded as numbers (using the technique of "arithmetization" developed by Kurt Gödel), such an encoding is not very convenient. Instead, a new kind of data called "S-expressions" (for "symbolic expressions") is introduced specifically to provide convenient encodings. S-expressions can be defined by a set of formal inductive axioms analogous to the Peano postulates used to define natural numbers. Here we will give only an informal and incomplete definition of S-expressions; for a more complete description, see (Note S-expression Postulates and Notation). 
+For our purposes we will need only the special cases of S-expressions called atoms and lists. An atom is an "indivisible" data object, which we denote by writing a string of letters and digits; if only digits are used, then the atom is considered to be a number. Many special characters such as "-" and "+" are considered to be letters; we will see below that it is not necessary to specially reserve them 
+them for for use as operator symbols. A list is a (possibly empty) sequence of S-expressions, notated by writing the S-expressions in order, between a set of parentheses and separated by spaces. A list of the atoms "FOO", "43", and "BAR" would be written "(FOO 43 BAR)". Notice that the definition of a list is recursive. For example, 
+
+(DEFINE (SECOND X) (CAR (CDR X))) 
+
+is a list of three things: the atomic symbol DEFINE, a list of the two atomic symbols SECOND and x, and another list of two other things. 
+We can use S-expressions to represent algebraic expressions by using "Cambridge Polish" notation, essentially a parenthesized version of prefix Polish notation. Numeric constants are encoded as numeric atoms; variables are encoded as non-numeric atoms (which henceforth we will call atomic symbols); and procedure invocations are encoded as lists, where the first element of the list represents the procedure and the rest represent the arguments. For example, the algebraic expression "a*b+c*d" can be represented as "(+ (* a b) (* c d))". Notice that LISP does not need the usual precedence rules concerning whether multiplication or addition is performed first; the parentheses explicitly define the order. Also, all procedure invocations have a uniform syntax, no matter how many arguments are involved. Infix, superscript, and subscript notations are not used; thus the expression "Jp(x^2+1)" would be written "(J p (+ (* × 2) 1))". 
+To encode a conditional expression 
+
+[p_1 → e_1;p_2 → e_2; ... ;p_N → e_N]
+
