@@ -464,44 +464,365 @@ If we are to avoid such conflicts between different uses of the same name, we mu
 
 ## Lexical Scoping
 
+We now construct an interpreter in which all variables have strictly local usage. This discipline is called lexical scoping of variables, and has been used in many programming languages, including Algol 60 [Naur]. The term "lexical" refers to the fact that all references to a local variable binding are textually apparent in the program. The term static binding is also used, indicating that the connection between binding and reference is unchanging at run time.
+The difficulty in SCALE is that the body of the LAMBDA-expression (* X L) is evaluated using the ENV which was available to EVAL (and so passed to APPLY) when it was working on the body of MAPCAR. But we want the (* X L) to be evaluated using the ENV which was available when the body of SCALE was being evaluated. Somehow we must arrange for this environment to be available for evaluating (* X L).
+The correct environment was available at the time the LAMBDA-expression was evaluated to produce a &PROCEDURE-object. Why not just tack the environment at that point onto the end of the &PROCEDURE-object so that it can be used when the procedure is applied?
+This is in fact the right thing to do. The object we want to give to MAPCAR must be not just the text describing the computation to be performed, but also the meanings of the free variables referenced in that text. Only the combination of the two can correctly specify the computation which reflects the complete meaning of the abstract function to be mapped. This is the first place where we find it crucial to distinguish the three ideas: (1) The program - the text describing a procedure, e.g. in the form of an S-expression; (2) The procedure which is executed by the computer; and (3) The mathematical function or other conceptual operation computed by the execution of the procedure. 
+To install lexical scoping in our interpreter, we must change the treatment of LAMBDA-expressions in EVAL to make the current environment ENV part of the &PROCEDURE-object. We say that the procedure is closed in the current environment, and the &PROCEDURE-Object is therefore called a closure of the procedure, or a closed procedure. We must also change APPLY to bind the new variable-value associations onto the environment in the &PROCEDURE-object, rather than onto that passed by EVAL. When we have done this, we see that in fact the environment passed by EVAL is not used, so eliminate the parameter ENV from the definition of APPLY, and change the invocation of APPLY that occurs in EVAL. Thus, while the handling of LAMBDA-expressions has become more complicated, the handling of ENV has been correspondingly simplified. (See Figure 7.)
+Had we previously adopted the trick described in the preceding section, wherein the user was required to write 
+was required to write '(LAMBDA ...) rather than (LAMBDA ...), it would have been more difficult to adjust the interpreter to accommodate lexical scoping - it would have involved a large change rather than a small tweak. (The change from dynamic scoping to lexical scoping does involve a gross change of programming style, and this is undoubtedly why, once dynamic scoping had historically become the standard discipline, the quotation problem was never cleared up. We will see later that dynamic scoping is valuable technique for producing modularity, but we see no virtue at all in the confusion produced by quoted LAMBDA-expressions. While quoted LAMBDA-expressions do produce dynamic scoping, the support of dynamic scoping does not depend on the quotation of LAMBDA-expressions.) 
+While lexical scoping solves our problems of referential transparency, we will see later that we must in turn pay a large price for it - but it is not a price of run-time efficiency (contrary to popular belief)! 
 
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              (T (APPLY (EVAL (CAR EXP) ENV)
+                        (EVLIS (CDR EXP) ENV)))))
 
+(DEFINE (APPLY FUN ARGS)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (EVAL (CADDR FUN)
+                     (BIND (CADR FUN) ARGS (CADDDR FUN))))
+              (T (ERROR))))
 
+For VALUE and BNID see Figure 3.
+For EVCOND and EVLIS see Figure 5.
 
+Figure 7
+Evaluator for Lexically Scoped LAMBDA-notation
+```
 
+Let's see what we have bought. One thing we can do is generalize MAPCAR. After yet more programming experience we find that we write many MAPCAR-like procedures. For example, we might need a kind of MAPCAR where the function F always returns a list, and we want to produce not a list of the lists, but the concatenation of the lists. We might also want to take the sum or the product of all the numbers in a list, or the sum of the cars of all elements in a list. The general pattern is that we look at each element of a list, do something to it, and then somehow combine the results of all these elementwise operations. Another application might be to check for duplicates in a list; for each element we want to see whether another copy follows it in the list. We further generalize the pattern to look at successive trailing segments of the list; we can always take the car to get a single element. 
+We could simply add more procedural parameters to MAPCAR: 
 
+(DEFINE (MAP F OP ID L)
+        (COND ((NULL L) ID)
+              (T (OP (F L)
+                     (MAP F OP ID (CDR L))))))
 
+Using this, we can make a copy of the list L: 
 
+(MAP CAR CONS '() L)
 
+We can simulate (MAPCAR F L): 
 
+(MAP (LAMBDA (X) (F (CAR X))) CONS '() L)
 
+Indeed, we can write:
 
+(DEFINE (MAPCAR F L) 
+        (MAP (LAMBDA (X) (F (CAR X))) CONS '() L))
 
+We can sum the elements of L:
 
+(MAP CAR + 0 L) 
 
+We can take the product of the elements of L: 
 
+(MAP CAR * 1 L) 
 
+We can count the pairs of duplicate elements of L: 
 
+(MAP (LAMBDA (X) X)
+     (LAMBDA (Y N) (COND ((MEMBER (CAR Y) (CDR Y))
+                          (+ N 1))
+                         (T N)))
+     0
+     L)
 
+If we have occasion to take the sum over lots of lists in different places, we might want to package the operation "sum over list" - we get awfully tired of writing "CAR + 0". We can write:
 
+(DEFINE (MAPGEN F OP ID)
+        (LAMBDA (L) (MAP F OP ID L)))
 
+The result of (MAPGEN CAR + 0) we might call SUM - it is a procedure of one argument which will sum the elements of a list. The reason we wrote a procedure to construct SUM, rather than just writing:
 
+(DEFINE (SUM L)
+        (MAP CAR + 0 L))
 
+is that MAPGEN serves as a generalized constructor of such procedures, thus capturing an interesting abstraction - we might call the result of (MAPGEN CAR * 1), for example, PRODUCT, and so on. 
+What is interesting about this is that we can write procedures which construct other procedures. This is not to be confused with the ability to construct S-expression representations. of procedures; that ability is shared by all of the interpreters we have examined. The ability to construct procedures was not available in the dynamically scoped interpreter. In solving the violation of referential transparency we seem to have stumbled across a source of additional abstractive power. While the MAP example may seem strained, this example is quite natural: given a numerical function, to produce a new function which numerically approximates the derivative of the first.
 
+(DEFINE (DERIVATIVE F ΔX) 
+        (LAMBDA (X)
+                (/ (- (F (+ X ΔX))
+                      (F X))
+                   ΔX)))
 
+Notice that this is not a symbolic process dealing with the representation of F. The DERIVATIVE procedure knows nothing about the internal structure of F. All it does is construct a new procedure which uses F only by invoking it. The program DERIVATIVE captures (in approximation) the abstraction of "derivative" as a mapping from the space of numerical (and reasonably well-behaved!) functions to itself.
+The ability to define procedures which construct other procedures is powerful. We can use it to construct procedures which behave like data objects. For example, since the only constraints which coNs must (so far) obey are the algebraic identities:
 
+(CAR (CONS α β)) = α and (CDR (CONS α β)) = β
 
+the value of (CONS α β) can be thought of as a procedure which produces a or β on demand (cf. [Hewitt and Smith] [Fischer]). We can write this as follows:
 
+(DEFINE (CONS A D) 
+        (LAMBDA (M) 
+                (COND ((= M 0) A)
+                      ((= M 1) D))))
 
+(DEFINE (CAR X) (X 0)) 
 
+(DEFINE (CDR X) (X 1)) 
+
+Here we have envisioned the value of (CONS α β) as a vector of two elements, with zero-origin indexing. However, this definition of CONS makes use of the primitive operator =. We can define the "primitive operators" CONS, CAR, and CDR without using another primitive operator at all! Following [Church], we write:
+
+(DEFINE (CONS A D) 
+        (LAMBDA (M) (M A D)))
+
+(DEFINE (CAR X)
+        (X (LAMBDA (A D) A)))
+
+(DEFINE (CDR X)
+        (X (LAMBDA (A D) D)))
+
+Rather than using 0 and 1 (i.e. data objects) as selectors, we instead use (LAMBDA (A D) A) and (LAMBDA (A D) D) (i.e. procedures). 
+We can think of the LAMBDA-expression which appears as the body of the definition of DERIVATIVE or of CONS as a prototype for new procedures. When DERIVATIVE or CONS is called, this prototype is instantiated as a closure, with certain variables free to the prototype bound to the arguments given to the constructor.
+At this point it looks like we have solved all our problems. We started with a referentially transparent but expressively weak language. We augmented it with procedural objects and a notation for them in order to capture certain notions of abstraction and modularity. In doing this we lost the referential transparency. We have now regained it, and in the process uncovered even more powerful abstraction capabilities.
 
 
 
 ## Top Levels versus Referential Transparency
+
+"The Three Laws of Thermodynamics: 
+1. You can't win. 
+2. You can't break even. 
+3. You can't get out of the game." 
+- Unknown
+
+There is no free lunch. We have ignored a necessary change to the top level driver loop. We have changed the format of &PROCEDURE-objects. DRIVER-LOOP-1 constructs &PROCEDURE-objects; it must be rewritten to accommodate the change. We must include an environment in each such object. The obvious fix is shown in Figure 8.
+
+```lisp
+(DEFINE (DRIVER-LOOP-1 ENV FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP (BIND (LIST (CAADR FORM))
+                                  (LIST (LIST '&PROCEDURE
+                                              (CDADR FORM)
+                                              (CADDR FORM)
+                                              ENV))
+                                  ENV)
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP ENV (PRNIT (EVAL FORM ENV))))))
+
+For DRIVER-LOOP see Figure 1.
+For BIND see Figure 3.
+For EVAL see Figure 7.
+
+Figure 8
+Modified Driver Loop for Lexically Scoped LAMBDA-notation
+```
+
+It doesn't work. This patch does put the finishing touch on the preservation of referential transparency. It does it so well, that each new definition can only refer to previously defined names! We have lost the ability to make forward references. We can't redefine a procedure which had a bug in it and expect old references to use the new definition. In fact, we cannot use DEFINE to make a recursive procedure. {Note Y-operator} The &PROCEDURE -object for each defined procedure contains environment having only the previously defined procedures.
+We are finally confronted with the fact that we have been seeking the impossible. We have tried to attain complete referential transparency (in the expectation that modularity would be enhanced), while trying also to retain the notion of an incremental, interactive top-level loop for reading definitions. But the very existence of such a top level inherently constitutes a violation of referential transparency. A piece of code can be read in which refers to an as yet undefined identifier (the name of a procedure, for example), and then later a definition for that identifier read in (thereby altering the meaning of the reference).
+If we stubbornly insist on maintaining absolute referential transparency in our language, we are forced to eliminate the incremental top level loop. A program must be constructed monolithically. We must read in all our procedure definitions at once, close them all together, and then take one or more shots at running them. (This is the way many Algol implementations work; development of large systems can be very difficult if parts cannot be separately constructed and compiled.) We are forced to give up interactive debugging, because we cannot redefine erroneous procedures easily. We are forced to give up incremental compilation of separate modules.
+We have thrown the baby out with the bath water. The very purpose of referential transparency is to permit programs to be divided into parts so that each part can be separately specified without a description of its implementation. The desirable result is that pieces can be separately written and debugged. {Note Debugging}
+On the other hand, if we give up absolute referential transparency, we can fix the top level loop. The basic problem is that we really want procedures defined at top level to be able to refer to procedures defined later. The problem with pure lexical scoping is that the &PROCEDURE-objects are created too early, when the desired environment is not yet available. We must arrange for them to be constructed at a later time. We could simply use the environment in use by the caller at the time of invocation (reverting to dynamic scoping). But dynamic scoping would lose a great deal of referential transparency and abstractive power. Procedures must not be allowed to refer to variables internal to other procedures, but only to top-level variables existing at the time they are called. Therefore only the future top-level environment is to be included in the &PROCEDURE-object when it is eventually constructed. In this way free variable references will be dynamic only with respect to the top-level environment.
+Considering our dynamically-scoped interpreter above (see Figure 5), we would be led to modify APPLY again, to combine the best properties of the dynamically and lexically scoped interpreters. Indeed, the two kinds of function can easily coexist. We borrow the code involving the passing of PROCEDURES (including the DRIVER-LOOP, modified to initialize ENV to PROCEDURES) from the recursion-equations interpreter (Figures 1 and 2), the code for using this top-level environment from the dynamically-scoped interpreter (Figure 5), and the code for constructing &PROCEDURE-Objects for LAMBDA-expressions from the lexically-scoped interpreter (Figure 7). The result appears in Figure 9.
+
+```lisp
+(DEFINE (EVAL EXP ENV PROCEDURES)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV PROCEDURES))
+              (T (APPLY (EVAL (CAR EXP) ENV PROCEDURES)
+                        (EVLIS (CDR EXP) ENV PROCEDURES)
+                        PROCEDURES))))
+
+(DEFINE (APPLY FUN ARGS PROCEDURES)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (EVAL (CADDR FUN)
+                     (BIND (CADR FUN) ARGS (CADDDR FUN)
+                     PROCEDURES)))
+              (T (EVAL (CADR FUN)
+                       (BIND (CAR FUN) ARGS PROCEDURES)
+                       PROCEDURES))))
+
+(DEFINE (DRIVER-LOOP-1 PROCEDURES FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP PROCEDURES
+                            (PRINT (EVAL FORM PROCEDURES PROCEDURES))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP (BIND (LIST (CAADR FORM))
+                                  (LIST (LIST (CDADR FORM) (CADDR FORM)))
+                                  PROCEDURES)
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP PROCEDURES
+                              (PRINT (EVAL FORM PROCEDURES PROCEDURES))))))
+
+For DRIVER-LOOP See Figure 1.
+For VALUE and BNID see Figure 3.
+For EvCOND and EvLIs see Figure .2
+
+Figure 9
+An Evaluator for Local Lexical Scoping and Dynamic Top-Level References
+```
+
+Ugh bletch, PROCEDURES is back! Also, there are two kinds of user-defined procedural objects floating around. There happens to be another way to fix the top level, which yields additional flavor. We note that during any one processing cycle of EVAL/APPLY, PROCEDURES remains constant. We can thus choose to associate the top level environment with a top-level procedure at a a time earlier than invocation time in APPLY. We also note that LOOKUP1 will have its hands on the top-level environment anyway just before it locates the definition of a top-level procedure. Exploiting this idea yields an alternate solution. {Note LABELS} 
+In the new driver (see Figure 10) loop we no longer use BIND to augment the top-level environment whenever a new definition is made. instead have all of the top-level definitions in one frame of the environment. When a new definition is to be made we extract the list of names and the list of values for the old definitions from the old environment and make a new top-level environment with the lists of names and values separately augmented.
+Instead of creating & PROCEDURE -objects, this driver loop creates &LABELED-objects, which have the same format except that they contain no environment. A &LABELED-object is purely internal and can never be seen by a user program. When LOOKUP1 encounters such an object as the value of a variable, it immediately creates the corresponding &PROCEDURE -object, using the environment at hand, which turns out to be the top-level environment.
+
+
+```lisp
+(DEFINE (DRIVER-LOOP-1 ENV FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP (LIST (CONS (CONS (CAADR FORM) (CAAR ENV))
+                                        (CONS (LIST '&LABELED
+                                                    (CDADR FORM)
+                                                    (CADDR FORM))
+                                              (CDAR ENV))))
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))))
+
+(DEFINE (LOOKUPI NAME VARS VALS ENV)
+        (COND ((NULL VARS)
+               (LOOKUP NAME (CDR ENV)))
+              ((EQ NAME (CAR VARS))
+               (COND ((ATOM (CAR VALS)) VALS)
+                     ((EQ (CAAR VALS) '&LABELED)
+                      (LIST '&PROCEDURE (CADAR VALS) (CADDAR VALS) ENV))
+                     (T VALS)))
+              (T (LOOKUP1 NAME (CDR VARS) (CDR VALS) ENV))))
+
+For DRIVER-LOOP see Figure 1.
+For LOOKUP see Figure 3.
+For EVAL see Figure 7.
+
+Figure 10
+An Alternative Solution for Local Lexical Scoping and Dynamic Top-Level References
+(Modified Top-Level Driver Loop and Environment Lookup)
+```
+
+
 # Part Two - State
+
 ## Decomposition of State
+
+We saw in Part One that an interactive top-level loop necessarily violates referential transparency. We wish to deal with the computer as an entity with state, which changes over time by interacting with a user. In particular, we want the computer to change over time by accumulating procedure definitions.
+Just as the user wishes to think of the computer as having state, he may find it conceptually convenient to organize a program similarly: one part may deal with another part having state. Often programs are written for the purpose of analyzing or simulating a physical system. If modules of the program are to reflect the conceptual divisions of the physical system, then the program modules may well need to have independent state variables. Thus the notion of state is not just a programming trick, but may be required by the nature of the problem domain.
+A simpler example of the use of state involves the use of a pseudo-random number generator. A LISP version of one might be:
+
+(DEFINE (RANDOM SEED) 
+        ((LAMBDA (Z) 
+                 (COND ((> Z 0) Z)
+                       (T (+ Z -32768.))))
+         (* SEED 899.)))
+
+This version of 'RANDOM uses the power-residue method for a 16-bit two's-complement number representation; the value produced is a pseudo-random integer, and also is the seed for the next call. The caller of RANDOM is required to save this value and supply it on the next call to RANDOM.
+This fact is unfortunate. The caller really has no interest in the workings of RANDOM, and would much prefer to simply call it as "(RANDOM)", for example, and get back a random number - because this would reflect most precisely the abstract notion of "random number generator". Such a generator would have to have state.
+Suppose we are willing to live with this nuisance. Consider now building some larger program using RANDOM. Many levels up, the programmer who writes some high-level routine. very likely does not care at all that a low-level routine uses RANDOM; he may not even know about the existence of that routine. However, if the state of the pseudo-random number generator is to be preserved, that programmer will have to deal with some state quantity he knows nothing about, for the sake of a program ten levels removed from his thinking. Just as PROCEDURES had to be passed all around for the sake of EVAL in Figure 2, so the state of RANDOM must be passed up and down and all around by programs which don't really care. This clearly violates our principle of modularity. (For an example of how bad this can get, see {Note Gaussian}.)
+As another example, suppose that George writes MAPCAR, and Harry uses it. Harry complains that MAPCAR is too slow. George then decides to collect some statistics about the use of MAPCAR, such as the number of times called, the average length of the second argument, and so on. He first writes an experimental MAPCAR to count number of calls:
+
+(DEFINE (MAPCAR F L N) 
+        (CONS (OLDMAPCAR F L) (+ N 1)))
+
+(DEFINE (OLDMAPCAR F L)
+        (COND ((NULL L) '())
+              (T (CONS (F (CAR L))
+                       (OLDMAPCAR F (CDR L))))))
+
+and asks Harry to use it for a while in his program. "I had to add an extra argument to keep track of the count,' says George, "and in order to return both the result and the count, I had to cons them together. Please rewrite your program to keep track of the count and pass it on from one call on MAPCAR to the next." Harry's reply is "unprintable".
+Now Bruce comes along and asks Harry how to use Harry's program. Harry says, "Just write (DIFFERENTIATE EXP VAR N), where EXP is the expression to be differentiated, VAR is the variable with respect to which to differentiate, and N is George's statistics counter - but that may go away next week." Bruce gives Harry a funny look, then goes away and writes his own DIFFERENTIATE, using George's documentation for the old MAPCAR, of course, unaware that the new one has been installed...
+George's new MAPCAR conceptually has state. The state information should be local to the definition of MAPCAR, because that information is not anyone else's business, and George has no business requiring everyone else to keep track of it for him. George and Harry and Bruce all wish George had a way to maintain local state information in MAPCAR.
+
+
 ## Side Effects and Local State
+
+Traditionally local state is maintained through some sort of "side effect". We can always avoid the use of side effects if we are willing to pass all state variables around. As we have seen, this requires a monolithic conception of the program structure. If we wish to break a program up into independent modules, each with local state information, we must seek another method.
+We claim that any such method effectively constitutes a side effect. If a module has hidden state, then its behavior can potentially change over time.
+If only one module in the system has local state, then we can hide the side effect by making it the top-level module of the system, as we have done for DRIVER-LOOP. (For an example of this, see (Note Weber).) If more than one module has state, however, then each may perceive changes in the other's behavior. This the essence of side effect.
+The concept of side effect is induced by particular choices of boundaries between parts of a larger system. If a system boundary encloses all processes of interest (the system is closed), we need no concept of side effect to describe that system as a whole in vacuo. If, however, we wish to make an abstraction by dividing the system into modules more than one of which has independent state, then we have by this action created the concept of side effect.
+We are forced to introduce side effects as a technique for constructing modular systems. But side effects violate referential transparency by altering the meanings of expressions; we expect (+ 3 4) always to mean the same thing, but we cannot say the same for (+ 3 (RANDOM)). Two techniques for achieving modularity have come into direct conflict.
+The most common form of side effect in programming languages is the assignment statement, which alters the meaning of a variable. LISP provides this notion in the SETQ construct:
+
+(SETQ X 43) 
+
+returns 43, and as a side effect alters the meaning of x so that subsequent references will obtain 43 also.
+With this, George can now write:
+
+(DEFINE (MAPCAR F L)
+        (MAPCAR-1 F L (SETQ N (+ N 1))))
+
+(DEFINE (MAPCAR-1 F L HUNOZ)
+        (OLDMAPCAR F L))
+
+There are still some minor problems here. The function MAPCAR1 and the variable HUNOZ are used solely to throw away the value of the SETO form. It is 50 common to use SETQ only for its side effect that another construction, PROGN, is very useful:
+
+(PROGN e_1 e_i ... e_N)
+
+evaluates each of the forms e, in order, throwing away the values of all but the last one. Notice that we specifically require them to be evaluated in order; this concept did not occur in the specification of our earlier interpreters, because it was not necessary in the absence of side effects. Similarly, it was not useful to be able to throw away values in the absence of side effects. (We did throw away a value in DRIVER-LOOP, but that was one which resulted from calling PRINT, which of course is assumed to have a side effect!) Using PROGN, George can write: 
+
+(DEFINE (MAPCAR F L)
+        (PROGN (SETQ N (+ N 1))
+               (OLDMAPCAR F L)))
+
+There remains the problem of the global variable N, which Harry or Bruce might stumble across by accident. George has to have some handle to get at the statistics counter, and any handle George can use intentionally, Bruce and Harry can use accidentally. One thing that George can do is rename N to MAPCAR-STATISTICS-COUNTER, and warn Bruce and Harry not to use a global variable with that name. This is still better than the original situation at least now Bruce and Harry need not change their programs, and it is George's responsibility to find a name which does not conflict. {Note Can George do better?}
+In the case of RANDOM, where the state information is truly local in that no one wants to access it except its owner, we can combine the use of lexical scoping and of side effects to manipulate a completely hidden state variable. For example, suppose we want several independent pseudo-random number generators, initialized with different seeds. We can make a pseudo-random number generator generator as follows:
+
+(DEFINE (RGEN SEED) 
+        (LAMBDA () (PROGN (SETQ SEED
+                                ((LAMBDA (Z) (COND ((> Z 0) Z)
+                                                   (T (+ Z -32768.))))
+                                 (* SEED 899.)))
+                          SEED)))
+
+Each call to RGEN delivers as its value a new pseudo-random number generator which is an instance of the prototype described by the LAMBDA-expression which is the body of RGEN. Each one has a state variable which is its seed. The state of each instance is distinct from that of every other instance. This gives one the power of the own variables of ALGOL 60 without any additional mechanism.
+
+
 ## Side Effects in the Interpreter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Equipotency of SETQ and RPLACA
 ## Side Effects and Equality
 ## Dynamic Scoping as a State-Decomposition Discipline
