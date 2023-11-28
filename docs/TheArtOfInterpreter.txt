@@ -148,7 +148,7 @@ X 0) 1) (T (* X (FACTORIAL (- X
 but we conventionally lay out S-expressions so that they are easy to read.) 
 We now have a complete encoding for algebraic expressions and LISP recursion equations in the form of S-expressions. Suppose that we now want to write a LISP program which will take such an S-expression and perform some useful operation on it, such as determining the value of an algebraic expression. We need some procedures for distinguishing, decomposing, and constructing S-expressions. 
 The predicate ATOM, when applied to an S-expression, produces true when given an atom and false otherwise. The empty list is considered to be an atom. The predicate NULL is true of only the empty list; its argument need not be a list, but may be any S-expression. The predicate NUMBERP is true of numbers and false of atomic symbols and lists. The predicate EQ, when applied to two atomic symbols, is true if the two atomic symbols are identical. It is false when applied to an atomic symbol and any other S-expression. (We have not defined EQ on two lists yet; this will not become important, or even meaningful, until we discuss side effects.) 
-The decomposition operators for lists are traditionally called CAR and COR for historical reasons. [LISP History] CAR extracts the first element of a list, while COR produces a list containing all elements but the first. Because compositions of CAR and CDR are commonly used in LISP, an abbreviation is provided: all the C's and R's in the middle can be squeezed out. For example, "(CDR (CDR (CAR (CDR X))))" can be written as "(CDDADR X)". 
+The decomposition operators for lists are traditionally called CAR and CDR for historical reasons. [LISP History] CAR extracts the first element of a list, while CDR produces a list containing all elements but the first. Because compositions of CAR and CDR are commonly used in LISP, an abbreviation is provided: all the C's and R's in the middle can be squeezed out. For example, "(CDR (CDR (CAR (CDR X))))" can be written as "(CDDADR X)". 
 The construction operator CONS, given an S-expression and a list, produces a new list whose car is the S-expression and whose cdr is the list. The operator LIST can take any number of arguments (a special feature), and produces a list of its arguments. 
 We can now write some interesting programs in LISP to deal with S-expressions. For example, we can write a predicate EQUAL, which determines whether two S-expressions have the same CAR-CDR structure: 
 
@@ -160,7 +160,7 @@ We can now write some interesting programs in LISP to deal with S-expressions. F
                  ((ATOM X) (EQ X Y))
                  ((ATOM Y) NIL)
                  ((EQUAL (CAR X) (CAR Y))
-                  (EQUAL (COR X) (CDR Y)))))
+                  (EQUAL (CDR X) (CDR Y)))))
 
 Here we have used the standard names T and NIL to represent true and false. (Traditionally NIL is also considered to be the empty list, but we will avoid this here, writing "()" for the empty list.) 
 Because LISP programs are represented as LISP data structures (S-expressions), there is a difficulty with representing constants. For example, suppose we want to determine whether or not the value of the variable x is the atomic symbol "FOO". We might try writing:
@@ -223,12 +223,12 @@ The process carried on by the driver loop is often called the "top level"; all u
               ((EQ (CAR EXP) 'QUOTE)
                (CADR EXP))
               ((EQ (CAR EXP) 'COND)
-               (EVCOND (COR EXP) ENV PROCEDURES))
+               (EVCOND (CDR EXP) ENV PROCEDURES))
               (T (APPLY (VALUE (CAR EXP) PROCEDURES)
                         (EVLIS (CDR EXP) ENV PROCEDURES)
                         PROCEDURES))))
 
-(DEFINE (APLY FUN ARGS PROCEDURES)
+(DEFINE (APPLY FUN ARGS PROCEDURES)
         (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
               (T (EVAL (CADR FUN)
                        (BIND (CAR FUN) ARGS '())
@@ -693,7 +693,7 @@ Instead of creating & PROCEDURE -objects, this driver loop creates &LABELED-obje
                             (PRINT (CAADR FORM))))
               (T (DRIVER-LOOP ENV (PRINT (EVAL FORM ENV))))))
 
-(DEFINE (LOOKUPI NAME VARS VALS ENV)
+(DEFINE (LOOKUP1 NAME VARS VALS ENV)
         (COND ((NULL VARS)
                (LOOKUP NAME (CDR ENV)))
               ((EQ NAME (CAR VARS))
@@ -765,7 +765,7 @@ With this, George can now write:
 (DEFINE (MAPCAR-1 F L HUNOZ)
         (OLDMAPCAR F L))
 
-There are still some minor problems here. The function MAPCAR1 and the variable HUNOZ are used solely to throw away the value of the SETO form. It is 50 common to use SETQ only for its side effect that another construction, PROGN, is very useful:
+There are still some minor problems here. The function MAPCAR1 and the variable HUNOZ are used solely to throw away the value of the SETQ form. It is 50 common to use SETQ only for its side effect that another construction, PROGN, is very useful:
 
 (PROGN e_1 e_i ... e_N)
 
@@ -790,42 +790,244 @@ Each call to RGEN delivers as its value a new pseudo-random number generator whi
 
 ## Side Effects in the Interpreter
 
+In order to write a simple interpreter which implements the side effect SETQ, we will postulate the existence of two side effect operators which alter S-expressions:
 
+(RPLACA X Y) and (RPLACD X Y)
 
+return the value of x (which must not be atomic), but as a side effect alters × so that its car or cdr, respectively, is the value of Y. (The introduction of operators which modify S-expressions causes a number of nasty problems, which we will consider presently.) We will use these operators to alter the structure of the environment ENV. We modify EVAL to recognize the SETQ construct (see Figure 11). On seeing "SETQ" in the "operator position" of the expression, EVAL dispatches to EVSETQ, after recursively evaluating the value to be assigned. EVSETQ uses LOOKUP to find the effective binding of the variable mentioned in the SETQ. If there is such a binding, RPLACA is used to change the value associated with the variable. If there is no such binding, then the intent is to initialize a top-level variable; EV-TOP-LEVEL-SETQ locates the top-level environment (which is always at the end of any environment) and creates a new binding by altering the environment structure.
+We also modify EVAL to recognize PROGN. EVPROGN is a tail-recursive loop which evaluates each subform of the PROGN form in turn, throwing away each value but the last. {Note PROGN Wizardry}
 
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'SETQ)
+               (EVSETQ (CADR EXP) (EVAL (CADDR EXP) ENV) ENV))
+              ((EQ (CAR EXP) 'PROGN)
+               (EVPROGN (CDR EXP) ENV NIL))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              (T (APPLY (EVAL (CAR EXP) ENV)
+                        (EVLIS (CDR EXP) ENV)))))
 
+(DEFINE (EVSETQ VAR VAL ENV)
+        ((LAMBDA (SLOT)
+                 (COND ((EQ SLOT '&UNBOUND)
+                        (EV-TOP-LEVEL-SETQ VAR VAL ENV))
+                       (T (CAR (RPLACA SLOT VAL)))))
+         (LOOKUP VAR ENV)))
 
+(DEFINE (EV-TOP-LEVEL-SETQ VAR VAL ENV)
+        (COND ((NULL (CDR ENV))
+               (CADAR (RPLACA ENV
+                              (CONS (CONS VAR (CAAR ENV))
+                                    (CONS VAL (CDAR ENV))))))
+              (T (EV-TOP-LEVEL-SETQ VAR VAL (CDR ENV)))))
 
+(DEFINE (EVPROGN EXPS ENV HUNOZ)
+        (COND ((NULL (CDR EXPS)) (EVAL (CAR EXPS) ENV))
+              (T (EVPROGN (CDR EXPS) ENV (EVAL (CAR EXPS) ENV)))))
 
+For VALUE, LOOKUP, and BNID see Figure 3.
+For EVCOND and EVLIS see Figure 5.
+For APPLY see Figure 7.
+For LOOKUP1 see Figure 10 (not Figure 3).
 
+Figure 11
+Evaluator with User Side Effects (Assignment to Variables)
+```
 
+Because EVSETQ can be used to initialize new top-level variables, it is convenient for DRIVER-LOOP-1 to call EVSETQ when defining a new function (see Figure 12). Unlike the DRIVER-LOOP-1 of Figure 10, this one has no special knowledge about the structure of environments; as before, such knowledge is hidden in environment specialists such as BIND, VALUE, and now EVSETQ. (The value of EVSETQ is not used, but thrown away; we introduce an extra throwaway parameter into the definition of DRIVER-LOOP for this purpose.)
 
+```lisp
+(DEFINE (DRIVER)
+        (DRIVER-LOOP <THE -PRIMITIVE-PROCEDURES>
+        NLI
+        (PRINT '|LITHP ITH LITHTENING|)))
 
+(DEFINE (DRIVER-LOOP ENV HUNOZ HUKAIRZ)
+        (DRIVER-LOOP-1 ENV (READ)))
 
+(DEFINE (DRIVER-LOOP-1 ENV FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP ENV NLI (PRINT (EVAL FORM ENV))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP ENV
+                            (EVSETQ (CAADR FORM)
+                                    (LIST '&LABELED
+                                          (CDADR FORM)
+                                          (CADDR FORM))
+                                    ENV)
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP ENV NLI (PRINT (EVAL FORM ENV))))))
 
+For EVSETQ see Figure 11.
 
+Figure 12
+Driver Loop for Evaluator with User Side Effects (Assignment to Variables)
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+(Once we have side effects, we don't really need the &LABELED device permit incremental definition of recursive functions; we can just perform a side effect on the top-level environment. We left the &LABELED device in Figure 12 for continuity with the previous examples. "Real" LISP systems use the side effect method. See {Note Driver Loop with Side Effects), and also (Note LABELS with Side Effects).)
 
 
 ## Equipotency of SETQ and RPLACA
+
+We pulled a fast one when we introduced RPLACA and RPLACD for the sake of implementing SETQ (though we actually only used RPLACA). We used a side effect to define the implementation of side effects. While this makes a fine meta-circular description, it doesn't constitute a definition of side effects founded on the original meta-circular recursion equations interpreter. 
+We could implement an interpreter which would define a side effect without itself using side effects. Such a definition would encapsulate the entire state of the user's data structures into a single interpreter data structure which is passed around by a top-level loop. Constructing such an interpreter would involve turning a regular interpreter inside out (in much the same way GAUSSIAN was everted in (Note Weber}). This is extremely difficult and lengthy, and the module boundaries within the interpreter are so destroyed that the resulting interpreter is nearly impossible to understand. We will spare the reader the details. 
+We settle for a meta-circular description of side effects. Now that we have seen how to implement SETQ in terms of RPLACA and RPLACD, we can also do the reverse, completing the meta-circle (see Figure 13). We use the procedural version of CONS shown earlier, modified to provide two "setting procedures" SA and SD, which provide the ability to alter the car and cdr.
+
+```lisp
+(DEFINE (CONS A D)
+        (LAMBDA (M)
+                (M A D (LAMBDA (Z) (SETQ A Z)) (LAMBDA (Z) (SETQ D Z)))))
+
+(DEFINE (CAR X)
+        (X (LAMBDA (A D SA SD) A)))
+
+(DEFINE (CDR X)
+        (X (LAMBDA (A D AS SD) D)))
+
+(DEFINE (RPLACA X Y)
+        (X (LAMBDA (A D AS SD)
+                   (PROGN (SA Y) X))))
+
+(DEFINE (RPLACO XY)
+        (X (LAMBDA (A D AS SD)
+                   (PROGN (SD Y) X))))
+
+Figure 13
+Procedural ("Actors-like") Implementation of CONS and Friends
+```
+
+We originally introduced side effects such as SETQ to help us build modules such as RANDOM which have local state. Now, using the technique of constructing procedures, we find that CONS can be viewed as a constructor of modules, just as MAPGEN was. 
+CONS Constructs modules ("cons cells") which use SETQ to maintain a local state. 
+
+
 ## Side Effects and Equality
+
+"Things are seldom what they seem, Skim milk masquerades as cream..." 
+- Gilbert and Sullivan (H.M.S. Pinafore)
+
+"Plus ça change, plus c'est la même chose."
+- Alphonse Karr
+
+
+Our descriptions of SETQ and RPLACA, both informal and meta-circular, are imprecise. They admit a number of drastically different interpretations of the behavior of the system. We would all agree that for RPLACA to mean anything at all like what we want, the expression:
+
+```lisp
+((LAMBDA (X) 
+         (PROGN (RPLACA X 'Z)
+                (CAR X)))
+ (CONS 'A '(B C)))
+
+Puzzle #1 
+```
+
+should evaluate to Z. But what about this case:
+
+```lisp
+((LAMBDA (X Y) 
+         (PROGN (RPLACA X 'Z)
+                (CAR Y)))
+ (CONS 'A '(B C))
+ (CONS 'A '(B C))) 
+
+Puzzle #2 
+```
+
+Should this evaluate to A or Z? Nearly all LISP systems would produce A, but there are arguments for both possibilities. Similarly, should this:
+
+```lisp
+((LAMBDA (X)
+         ((LAMBDA (U V)
+                  (PROGN (RPLACA U 'Z)
+                         (CAR V)))
+          X X))
+ (CONS 'A '(B C)))
+
+Puzzle #3
+```
+
+evaluate to A or Z? Again there are arguments for both possibilities. 
+Before we can meaningfully consider these questions, we must have a precise notion of what we mean by "RPLACA". Let us review its description:
+
+If x has as its value a non-atomic S-expression, and we evaluate the expression (RPLACA X Y), then after this evaluation, the value of the expression (CAR X) is Y. 
+
+This description depends upon a critical assumption. We have a notion of a thing which is the value of X, such that several references to the variable X all refer to the same thing. But what the $&*#@ do we mean by "same"??
+The concept of side effect is inseparable from the notion of equality/identity/sameness. The only way one can observationally determine that a side effect has occurred is when the same object behaves in two different ways at different times. (Note RPLACA Can Alter CAR Instead} Conversely, the only way one can determine that two objects are the same is to perform a side effect on one and look for an appropriate change in the behavior of the other.
+In order to determine the answers to the Puzzles above, we must determine what properties are required of "sameness". There may be different points of view regarding sameness, which may lead to different answers to the Puzzles. 
+If we agree that the answer to Puzzle #1 is z, then we have implicitly adopted the notion of consistency of variable reference, because we have referred to the variable x twice. As a property of the sameness predicate ≡, we write: (≡ X X). We can say that referring to a variable does not make a copy of its value (because if it did, the RPLACA in Puzzle #1 would have changed only a copy of the value of x, and (CAR X) would extract the car of a different copy, producing A).
+Given this, and given that we accept the interpreter of Figure 11 and believe in its meta-circularity, we are forced to conclude that the answer to Puzzle #3 is also z. We must consider all access paths and show that no copying can occur which would allow the answer to be A. The meta-circularity requires that any property of the interpreted language also hold for the text of the interpreter, and vice, versa. The answer to Puzzle #1 requires that variable references not produce implicit copies, and so neither can variable references in the text of the interpreter. (Consistent with this, our particular interpreter has no explicit code in LOOKUP which specifies copying.) The other place in Puzzle #3 where copying might occur is in the binding of U and V. Examining the text of our particular meta-circular interpreter shows that BIND also has no explicit code for copying. There remains the possibility that binding does implicitly copy in the text of the meta-circular interpreter; this would consistently cause copying in the bindings of the interpreted code, because ENV would be copied whenever bound in the text of the interpreter. This, however, would cause the answer to Puzzle #1 to be A, because ENV is bound at other places which would cause incorrect copying. We therefore conclude that no implicit copying can occur, and so the answer to Puzzle #3 is z. 
+We emphasize that this result rests on our acceptance of а particular class of meta-circular interpreters. (These interpreters, however, closely model what real LISP systems do.) There are other languages which do implicitly copy structured values when binding variables, such as Algol 60 when using call-by-value. For such a language, the answer to Puzzle #3 would be A (if we represented the list (A B C) as an Algol 60 array, for example), even though the answer to Puzzle #1 would still be Z. 
+One can argue both for and against copying during binding on the basis of modularity. Copying isolates the caller from the called routine by preventing the called routine from performing under-the-table side- effects on the caller's data objects. Not copying allows data objects to encapsulate independent pieces of state which can be operated on by low-level routines whose details need not be understood by their caller (an example of such a data object is the symbol table of an assembler, with its insertion and lookup routines). 
+We now consider Puzzle #2. If we accept that binding and variable referencing do not makes copies, then Puzzle #2 is a question about the nature of CONS: if CONS is called twice with arguments which are the same, are the two results the same? (Note that this is the inverse of Postulate 4 for S-expressions in {Note S-expression Postulates and Notation}.) If the answer is consistently A (as in most real LISP systems), then coNs must generate a new object every time it is called. (It must produce different results if the two sets of arguments differ, and an answer of A to Puzzle #2 requires different results if the two sets of arguments are the same.) CONS perforce contains a side effect. Calls to it are not referentially transparent. 
+The other possibility, given that variable binding and variable referencing do not make copies, is that the answer to Puzzle #2 is z. In this case, CONS of the same arguments must always produce the same result. This choice leads to galloping non-modularity of data structures without compensation. Suppose, for example, we 
+we represent arrays as lists of numbers (a reasonable LISP representation), and want to alter the last element of one such array (using RPLACA). Under this scheme, all arrays whatsoever with the same last element would be magically altered! A language with such characteristics would be extremely difficult to control. 
+Supposing now that binding does make copies as in Algol 60, the answer to Puzzle #2 must be A. Here it does not matter whether CONS of the same arguments produces the same result, since the bindings of x and y will make copies anyway. We may, however, consider this variant:
+
+```lisp
+(PROGN (RPLACA (CONS 'A '(B C)) 'Z)
+       (CAR (CONS 'A '(B C))))
+
+Puzzle #2a 
+```
+
+Here we have simply substituted the expressions (CONS 'A '(B C)) for the occurrences of X and Y. If CONS always returns the same object for the same inputs, then Puzzle #2 and Puzzle #2a have different answers if bindings copy, but may have the same answers if bindings do not copy (they may not have the same answer if CONS notices that we have pulled the rug out from under it and produces a new version because the old one was changed!). There is also a quibble as to whether the passing of an argument to RPLACA in itself constitutes a binding - if so, RPLACA must be completely ineffectual, because it always receives a copy! We must then regard RPLACA as a built-in system primitive; the user would have no way to define such a thing. This would be most unfortunate.
+We have examined many of the design decisions for the meaning of RPLACA, CONS, and equality. If side effects are to be usable at all, the references to things denoted by variables must not make copies of those things. If the user is to be able to write procedures which produce lasting side. effects on their arguments (as system-supplied primitive operators do), then there must be a variable binding mechanism which does not make copies. (LISP's binding mechanism in fact does not copy. Algol 60's call-by-value mechanism does copy structured data, but its call-by- name mechanism does not; we will study this in Part Three.) If the variable binding (or assignment) mechanism does not make copies, then CONS must generate a new, distinct object on each call.
+The reader may have noted that we have been talking in circles for the last several paragraphs: in attempting to elucidate the meaning of sameness, we have discussed side effects, and in so doing used the word "same" nearly every other sentence. The point is that it is not possible to define them separately; The meanings of "equality" and "side effect" simultaneously constrain each other. With this in mind, we will investigate the choice of a primitive equality predicate.
+The equality predicate we choose should be sufficiently finely grained to distinguish any two objects which have potentially distinct behavior, yet should not be so finely grained as to distinguish entities which otherwise would have the same behavior. Thus we have two desiderata:
+
+[1] Two objects which are observed to behave differently must not be equal. 
+[2] Conversely, we would like two objects which are adjudged unequal to exhibit differing behaviors under suitable circumstances.
+
+Any useful equality predicate must satisfy [1]. Unfortunately, satisfying [2] also may be too difficult; the equivalence of behavior for procedural objects is an unsolvable problem. We are thus forced to settle for an equality predicate which may make more distinctions than are strictly necessary.
+LISP has two standard equality predicates: EQUAL and EQ. We exhibited a definition of EQUAL in Part Zero. In Part Zero we also gave a description of EQ, but defined it only on atoms; LISP usually extends EQ to all S-expressions in such a way as to distinguish the results of different calls to CONS (regardless of the arguments given to CONS). Variable references and variable binding "preserve EQness".
+In the absence of RPLACA ("pure LISP"), EQ and EQUAL both satisfy desideratum [1]. EQUAL, however, makes fewer unnecessary distinctions than EQ. By desideratum [2], EQUAL is therefore preferred to EQ. (The technique of "hash-consing" [Goto] can be used in this situation to make EQ and EQUAL effectively the same.)
+In the presence of side effects such as RPLACA, EQUAL fails to make sufficiently many distinctions. Each call to CONS produces distinct objects, which EQUAL may fail to distinguish. In this case, EQUAL fails desideratum [1]. Thus, in the presence of RPLACA, EQ is the preferred equality predicate.
+In summary, indeed "the more things change, the more they remain the same". Two distinct objects may look the same because one masquerades as the other; they can be operationally distinguished only by purposely altering the behavior of just one of them. Thus the ability to decide whether two objects are the same is directly correlated with the ability to perform side effects on them.
+
 ## Dynamic Scoping as a State-Decomposition Discipline
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Summary
 # Acknowledgements
 # Notes
