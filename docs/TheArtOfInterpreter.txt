@@ -993,47 +993,254 @@ In summary, indeed "the more things change, the more they remain the same". Two 
 
 ## Dynamic Scoping as a State-Decomposition Discipline
 
+As we saw in the preceding section, side effects can become rather complicated. To help keep this complexity under control, we ought to abstract and package common patterns of their use.
+Suppose we have a procedure PRINT-NUMBER which prints numbers:
 
+(DEFINE (PRINT-NUMBER N) 
+        ((LAMBDA (Q R)
+                 (COND ((ZEROP Q) (PRINT-DIGIT R))
+                       (T (PROGN (PRINT-NUMBER Q)
+                                 (PRINT-DIGIT R)))))
+         (/ N 10.)
+         (REMAINDER N 10.)))
 
+Now people find this program very useful and use it in all their programs.
+Normally we want to print numbers in radix 10 (decimal), but occasionally (for example, in a debugging aid) we want to print numbers in other radices, such as 8 or 16. One might generalize the PRINT-NUMBER program to take the radix as an extra argument: 
 
+(DEFINE (PRINT-NUMBER N RADIX)
+        ((LAMBDA (Q R)
+                 (COND ((ZEROP Q) (PRINT-DIGIT R))
+                       (T (PROGN (PRINT-NUMBER Q)
+                                 (PRINT-DIGIT R)))))
+         (/ N RADIX)
+         (REMAINDER N RADIX)))
 
+Of course, then everyone who uses PRINT-NUMBER must supply the radix. This is mildly annoying, because most of the time one wants decimal printing, and one tires of writing "10." all the time. One might write another program for most people to use:
 
+(DEFINE (PRINT-10 N) 
+        (PRINT-NUMBER N 10.))
 
+This example is simple, but a real PRINT procedure in a real LISP system may be controlled by dozens of parameters like RADIX: format parameters for printing floating-point numbers, which file to print to, file-dependent format parameters such as line width and page length, file-dependent processing routines (e.g. scrolling for display terminals), abbreviation format parameters for S-expressions, etc. All these extra parameters to PRINT are really determined by the larger context in which PRINT is used, but this context is usually not determined by the immediate caller of PRINT. A program which generates and prints successive prime numbers should not have to deal with the complexities of output files; in particular, one does not want to have to rewrite the program just to direct the output to a line printer instead of a disk file. Context decisions are usually made at a much higher level (perhaps interactively by the user). Therefore the solution of using procedures like PRINT-10 is not acceptable; such procedures only serve as abbreviations, binding the many parameters to constants at too low a decision level.
+Another idea is to pass the extra parameters for print control through the intermediate levels of the program. But this violates the modularity of the intermediate modules, which generally have no interest in PRINT'S screwy parameters. On the other hand, an occasional intermediate module will be interested in dealing with a few of the parameters (but probably not all of them!). We would like a mechanism for dealing with only the parameters of interest, without having to deal with all of them all of the time.
+Side effects can do the job. We can make all the parameters globally available variables (in the top-level environment), initialized to reasonable default values, and invite all interested parties to perform SETQ as necessary. This technique has disadvantages. If every program just changes the parameters at will, then each program must re-set all the parameters (even the ones not of interest) for its own uses of PRINT. This is even worse than just passing PRINT all the parameters!
+We can require a convention whereby the parameters normally have their initial default values, and any program which modifies a parameter must eventually restore it to its previous value. For example, a procedure to print in octal might look like:
 
+(DEFINE (PRINT-8 N) 
+        ((LAMBDA (OLDRADIX)
+                 (PROGN (SETQ RADIX 8)
+                        (PRINT-NUMBER N)
+                        (SETQ RADIX OLDRADIX)))
+         RADIX))
 
+This convention allows PRINT-8 to locally alter the radix, in a manner transparent to its caller; it does not interfere with the way in which its caller may be using PRINT.
+This convention is a standard pattern of use. It is a stack discipline on the values of RADIX (or whatever other variables). We would like to capture this pattern as an abstraction in our language.
+Surprise! We have seen this abstraction before: dynamically Scoped variables behave in precisely this way. Dynamically scoped variables conceptually have a built-in side effect we took advantage of this at the end of Part One to fix the problem with the top-level loop. Binding a dynamically scoped variable such as RADIX can be said to cause a side effect because it alters the behavior of a (superficially) unrelated procedure such as PRINT in a referentially opaque manner. Such binding is a particularly structured kind of side effect, because it guarantees that the side effect will be properly undone when the binder has finished executing. Thus with dynamic scoping we could write:
 
+(DEFINE (PRINT-8 N)
+        ((LAMBDA (RADIX)
+                 (PRINT-NUMBER N))
+         8))
 
+We saw in Part One that, precisely because dynamically scoped variables are referentially opaque, we do not want all variables to be dynamically scoped. But we have newly rediscovered dynamic variables in another context and found them desirable. We therefore consider an interpreter which supplies both lexical and dynamic variables (see Figure 14).
+Here we have merged the dynamically scoped variable evaluator (Figure 5) with the lexically scoped evaluator (Figure 11). We changed APPLY to have an extra case, wherein an "open LAMBDA-expression" is effectively closed at the time of its application using the environment of its caller. EVAL is changed to once again supply the environment to APPLY. This interpreter is almost identical to that of LISP 1.5 [LISP 1.5M], with the difference that we write simply (LAMBDA ...) to get a closed procedure where in LISP 1.5 one must write (FUNCTION (LAMBDA ...)); in both cases one 
+must write '(LAMBDA ...) to get an open LAMBDA-expression. 
 
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'SETQ)
+               (EVSETQ (CADR EXP) (EVAL (CADDR EXP) ENV) ENV))
+              ((EQ (CAR EXP) 'PROGN)
+               (EVPROGN (CDR EXP) ENV NIL))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              (T (APPLY (EVAL (CAR EXP) ENV)
+                              (EVLIS (CDR EXP) ENV)
+                              ENV))))
 
+(DEFINE (APPLY FUN ARGS ENV)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (EVAL (CADDR FUN)
+                     (BIND (CADR FUN) ARGS (CADDDR FUN))))
+              ((EQ (CAR FUN) 'LAMBDA)
+               (EVAL (CADDR FUN)
+                     (BIND (CADR FUN) ARGS ENV)))
+              (T (ERROR))))
 
+For VALUE, LOOKUP, and BIND see Figure 3.
+For EVCOND and EVLIS see see Figure 5.
+For LOOKUP1 see Figure 10 (not Figure 3).
 
+Figure 14
+Interpreter with Both Open and Closed Procedures
+```
 
+Although this is the tradition, it doesn't work very well. The problem is that the lexical variables are not really lexical. Although lexical references cannot incorrectly refer to dynamically intended bindings, the reverse is not true. Dynamic variable references can be captured by bindings intended to be strictly lexical. 
+For example, we might want to write a procedure which packages up information about dealing with RADIX:
 
+(DEFINE (RADIX-10 FUN) 
+        ((LAMBDA (RADIX) (FUN))
+         10.))
 
+This is more general than PRINT-10 in that it allows us to wrap a binding of RADIX around any piece of code, not just a call to PRINT. (In a more realistic example, we might package up the bindings of a dozen parameters in a similar manner.) 
+There are two possibilities: should the argument to RADIX-10 be a closed procedure or an open LAMBDA-expression? If closed:
 
+(DEFINE (DO-SOMETHING-INTERESTING X FUN) 
+        (RADIX-10 (LAMBDA () (FORMAT-HAIR 'FOO (CADR X) FUN))))
 
+(FORMAT-HAIR takes several arguments, one of them a procedure and presumably calls PRINT at some level), then the binding of RADIX in RADIX-10 will not be apparent to PRINT, because the environment of the call to FORMAT-HAIR is that of the closed procedure, which in turn is that of the call to RADIX-10 within DO-SOMETHING-INTERESTING. Thus it fails to work at all. If the argument to RADIX-10 is left open:
 
+(DEFINE (DO-SOMETHING-INTERESTING X FUN) 
+        (RADIX-10 '(LAMBDA () (FORMAT-HAIR 'FOO (CADR X) FUN))))
 
+then this fails to work at all because of a variable naming conflict with FUN. The third argument passed to FORMAT-HAIR Will evaluate to the argument which was passed to RADIX-10, namely the quoted lambda expression. This is similar to the MAPCAR bug that originally got us thinking about lexical scoping in Part One.
+A solution to this problem is to maintain separate environments for lexical and dynamic variables; this will guarantee that the two kinds cannot interfere with each other. This will require a special syntax for distinguishing references to and bindings of the two kinds of variables. We will choose to encode lexical variables as atomic symbols, as before, and dynamic variables as lists of the form (DYNAMIC x), where x is the name of the dynamic variable. (This choice is completely arbitrary. We could have chosen to encode the two kinds as (LEXICAL ×) and x; or as (LEXICAL ×) and (DYNAMIC x), leaving atomic symbols as such free to encode yet something else; but we have chosen this because in practice most variable references, even in a purely dynamically scoped LISP, are lexical, or can be considered so.)
+In our new interpreter (see Figure 15) we call the two environments ENV (lexical) and DENV (dynamic). The syntax of LAMBDA-expressions is extended to accommodate two kinds of bindings; for example,
 
+(LAMBDA (X Y (DYNAMIC Z) W) ...)
 
+takes four arguments, and binds the parameters X, Y, and w lexically, and z dynamically. Using this syntax, we could write RADIX-10 in this way:
 
+(DEFINE (RADIX-10 FUN) 
+        ((LAMBDA ((DYNAMIC RADIX)) (FUN)) 
+         10.))
 
+The code for PRINT-NUMBER would then be written:
 
+(DEFINE (PRINT-NUMBER N) 
+        ((LAMBDA (Q R)
+                 (COND ((ZEROP Q) (PRINT-DIGIT R))
+                       (T (PROGN (PRINT-NUMBER Q)
+                                 (PRINT-DIGIT R)))))
+         (/ N (DYNAMIC RADIX))
+         (REMAINDER N (DYNAMIC RADIX))))
 
+Most of the extra complexity in Figure 15 is devoted to the parsing of LAMBDA-expression binding lists upon application by APPLY-PROCEDURE. (For the sake of brevity we have omitted the parts of the interpreter which deal with SETQ and PROGN; they could easily be re-inserted.)
 
+```lisp
+(DEFINE (EVAL EXP ENV DENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE) (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV DENV))
+              ((EQ (CAR EXP) 'DYNAMIC) (VALUE (CADR EXP) DENV))
+              (T (APPLY (EVAL (CAR EXP) ENV DENV)
+                        (EVLIS (CDR EXP) ENV DENV)
+                        DENV))))
 
+(DEFINE (APPLY FUN ARGS DENV)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS DENV))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (APLY-PROCEDURE (CADR FUN) ARGS '() '() '() '()
+                               (CADDDR FUN) DENV (CADDR FUN)))
+              (T (ERROR))))
 
+(DEFINE (APPLY-PROCEDURE VARS ARGS LVARS LARGS DVARS DARGS ENV DENV BODY)
+        (COND ((NULL VARS)
+               (COND ((NULL ARGS)
+                      (EVAL BODY
+                            (BIND LVARS LARGS ENV)
+                            (BIND DVARS DARGS DENV)))
+                     (T (ERROR))))
+              ((NULL ARGS) (ERROR))
+              ((ATOM (CAR VARS))
+               (APPLY-PROCEDURE (CDR VARS) (CDR ARGS)
+                                (CONS (CAR VARS) LVARS) (CONS (CAR ARGS) LARGS)
+                                DVARS DARGS
+                                ENV DENV BODY))
+              ((EQ (CAAR VARS) 'DYNAMIC)
+               (APPLY-PROCEDURE (CDR VARS) (CDR ARGS)
+                                LVARS LARGS
+                                (CONS (CAR VARS) DVARS) (CONS (CAR ARGS) DARGS)
+                                ENV DENV BODY))
+              (T (ERROR))))
+For EVCOND and EVLIS see Figure 2.
+For VALUE, BIND, and LOOkUP see Figure 3.
+For LOOKUP1 see Figure 10.
 
+Figure 15
+Interpreter with Separate Lexical and Dynamic Variables
+```
 
-
+Dynamic scoping provides an important abstraction for dealing with side effects in a controlled way. A low-level procedure may have state variables which are not of interest to intermediate routines, but which must be controlled at a high level. Dynamic scoping allows any procedure to get access to parts of the state when necessary, but permits most procedures to ignore the existence of the state variables. The existence of many dynamic variables permits the decomposition of the state in such a way that only the part of interest need be dealt with. 
+If dynamic variables are integrated with the lexical environment, intractable dilemmas are encountered. (We have not considered here all possible such integration schemes, but the authors have found such difficulties with every such scheme they have examined.) We have therefore presented an interpreter in which environments for the two kinds of variable are separated.
 
 
 # Summary
+
+We examined the effects of various language design decisions on the programming styles available to a user of the language, with particular emphasis on the ability to incrementally construct modular systems. At each step we exhibited an interactive meta-circular interpreter for the language under consideration. Each new interpreter was the result of an incremental change to the previous interpreter.
+We started with a simple interpreter for LISP recursion equations. In order to capture certain abstractions we were forced to introduce procedural data. This in turn forced consideration of the meanings of free variables in a procedure, for the simplest extension unexpectedly introduced dynamic scoping of variables.
+We were compelled to turn from dynamic scoping to lexical scoping to preserve the integrity of procedural abstractions. The referentially transparent language thus obtained is richer than expected. It allows the definition of procedures which construct other procedures by instantiation of a prototype. Unfortunately, we found that complete referential transparency in a language makes it impossible to construct an interactive interface to the interpreter. But such an interface is necessary to satisfy another requirement of modular construction: that parts of a program can be independently defined, replaced, and debugged. We were forced to give up absolute referential transparency to admit an interactive interface.
+The problems of the interactive interface led us to consider the notion of state as a dimension of abstraction. Just as we didn't want to have textually monolithic programs, we wanted to avoid programs which manipulate a monolithic representation of the state. The decomposition of the state of a system into several independent parts induces the notion of a side effect. Side effects only make sense relative to a definition of equality on the space of data objects. But the definition of equality itself depends simultaneously on the notion of side effect. Only a few of the choices of equality predicate and side effect notion are consistent with the requirements of modular construction.
+The introduction of side effects is inconsistent with referential transparency. But since both are important to support modular construction we must accept an engineering trade-off between them. We were led to look for controlled patterns of side effects which can be easily understood and safely applied. We discovered that one such pattern is equivalent to the use of dynamically scoped variables we discussed earlier. We investigated how to construct a system which integrates lexical and dynamic scoping in a smooth way.
+There are many issues yet to be explored. The introduction of side effects raises questions about order of evaluation. An interesting order provided by Algol 60 is call-by-name. This discipline, so unlike LISP's, is induced from a different notion of procedure, expressed as the "copy rule". This idea is a syntactic one, and so differs in flavor from the procedural ideas embodied by the interpreters we have presented. Consideration of syntactic transformations leads to the notion of procedures, such as macros, compilers, and simplifiers. We will explore all of this in Parts Three and Four. 
+
+
 # Acknowledgements
+
+We would like to thank Johan De Kleer, Daniel L. Weinreb, Julie Sussman, Carl Hewitt, Richard Stallman, Jon Doyle, and Mitch Marcus for reading our draft. They found few bugs and helped us refine our presentation. We also want to thank Hal Abelson and Robert Fano for help and encouragement. Finally, we must thank John McCarthy. Besides responding to our messages and answering questions about the early history of LISP, it was all his idea in the first place and we are continually amazed at the beauty and power of his conception.
+
 # Notes
+
 ## {Can George do Better?}
+
+The problem here is that George needs access to the statistics counter without giving that access to anyone else. As described in the next example George can make the counter an own variable, but how can he get access to it? One idea is that George can define MAPCAR in the following manner:
+
+((LAMBDA (N) 
+         (PROGN (SETQ MAPCAR 
+                      (LAMBDA (F L)
+                              (PROGN (SETQ N (+ N 1))
+                                     (OLDMAPCAR F L))))
+                (LAMBDA () N)))
+ 0)
+
+This expression defines MAPCAR by SETQing (See (Note Driver Loop with Side Effects}.) it to an appropriate procedure. It then returns, as a value, an anonymous procedure which accesses the value of the statistics counter. If George saves this value and uses it to get at the counter when he needs it, he will have isolated it completely from everyone else!
+
+
 ## {Debugging}
+
+
+It has been suggested that it is possible always to write correct programs. Such a situation would eliminate the need for debugging. The problem with this idea is that a crucial part of the problem-solving strategy is the decomposition of problems into presumably independent subproblems. There is no guarantee that this is possible in general, but even when it is not possible, there are often general strategies for approximating a solution to a problem by composing the solutions to almost independent subproblems. Often one can make progress on the solution to a hard problem by considering the solution of a simplified version of the problem which is similar in some essential aspect to the original one but which differs from it in detail. Once the solutions to the subproblems are obtained, they must be fitted together, and the details of the interactions smoothed out. The fixing of unanticipated interactions is debugging.
+Even in those cases where a decomposition into completely independent subproblems is possible, it is not always feasible. In order to be sure that the solutions to the subproblems are really independent it is necessary to understand both the problem and the possible implementations and interactions of subsolutions so completely that one must effectively solve the entire problem before choosing the correct decomposition. This compromises the decomposition strategy.
+
+
 ## {Driver Loop with Side Effects}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## {EVALQUOTE }
 ## {Gaussian}
 ## {LABELS}
