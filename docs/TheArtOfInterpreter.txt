@@ -1217,37 +1217,322 @@ Even in those cases where a decomposition into completely independent subproblem
 
 ## {Driver Loop with Side Effects}
 
+This driver loop (Figure N1) is similar to the one in Figure 8 (which didn't work). This one does work because, although top-level procedure definitions are closed in the current top-level environment, that environment is changed using a side effect when new definitions are made.
+
+```lisp
+(DEFINE (DRIVER-LOOP-1 ENV FORM)
+        (COND ((ATOM FORM)
+               (DRIVER-LOOP ENV NIL (PRINT (EVAL FORM ENV))))
+              ((EQ (CAR FORM) 'DEFINE)
+               (DRIVER-LOOP ENV
+                            (EVSETQ (CAADR FORM)
+                                    (LIST '&PROCEDURE
+                                          (CDADR FORM)
+                                          (CADDR FORM)
+                                          ENV)
+                                    ENV)
+                            (PRINT (CAADR FORM))))
+              (T (DRIVER-LOOP ENV NIL (PRINT (EVAL FORM ENV))))))
+
+For EVAL and EVSETQ see Figure 11.
+For LOOKUP1 see Figure 3 (not Figure 10, despite Figure 11!).
+
+Figure N1 
+Implementation of DRIVER-LOOP Using Side Effects
+```
+
+## {EVALQUOTE}
+
+The top level of LISP 1 [LISP 1M] and LISP 1.5 [LISP 1.5M] actually was not at all like the one presented here. Rather than reading one S- expression and giving it to EVAL, it read two S-expressions and gave them to APPLY. Such a top level is called an EVALQUOTE top level (see Figure N2). 
+
+```lisp
+(DEFINE (DRIVER-LOOP-1 PROCEDURES FORM1)
+        (DRIVER-LOOP-2 PROCEDURES FORM1 (READ)))
+
+(DEFINE (DRIVER-LOOP-2 PROCEDURES FORM1 FORM2)
+        (COND ((EQ FORM1 'DEFINE)
+               (DRIVER-LOOP (BIND (LIST (CAAR FORM2))
+                                  (LIST (LIST '&PROCEDURE (CDAR FORM2) (CADR FORM2)))
+                                  PROCEDURES)
+                            (PRINT (CAAR FORM2))))
+              (T (DRIVER-LOOP PROCEDURES
+                              (PRINT (APPLY FORM1 FORM2 PROCEDURES))))))
+
+For DRIVER-LOOP see Figure 1.
+For APPLY see Figure 2.
+For BIND see Figure 3.
+
+Figure N2
+Driver Loop for an EVALQUOTE Top Level
+```
+
+This driver loop is somewhat nicer than the one in Figure 1, because the one in Figure 1 had an essentially useless COND clause. The case of typing an atom was not useful, because there were no top-level values for variables. Once we introduce procedural objects, this is no longer true. But EVALQUOTE requires an inconsistency of notation: at the top level one must write CAR((A . B)), whereas in the middle of a program one would write (CAR '(A . B)). 
+The notion of EVALQUOTE also has some theoretical motivation, if one thinks of LISP as a universal machine akin to a universal Turing machine. In this model one takes a description of a machine to be simulated and a description of its input data, and gives them to the universal machine to process. In LISP, the universal machine is APPLY. 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## {EVALQUOTE }
 ## {Gaussian}
+
+A typical example of the use of a pseudo-random number generator is to construct a generator for pseudo-random numbers with a Gaussian distribution by adding up a large number of uniformly distributed pseudo-random numbers. We would like to write it in roughly as in Figure N3. 
+
+```lisp
+(DEFINE (GAUSSIAN)
+        (WEBER 0 43))
+
+(DEFINE (WEBER X N)
+        (COND ((= N 0) X)
+              (T (WEBER (+ X (RANDOM)) (- N 1)))))
+
+Figure N3
+"Gaussian" Pseudo-Random Number Generator
+```
+
+This code should add up 43 pseudo-random numbers obtained by calling RANDOM. We cannot write such a RANDOM without side effects, however. We can arrange to pass the seed around, as in Figure N4.
+
+```lisp
+(DEFINE (GAUSSIAN SEED)
+        (WEBER 0 43 SEED))
+
+(DEFINE (WEBER X N SEED)
+        (COND (( = N 0) (CONS X SEED))
+              (T ((LAMBDA (NEWSEED)
+                          (WEBER (+ X NEWSEED) (- N 1) NEWSEED))
+                  (RANDOM SEED)))))
+
+Figure N4
+"Gaussian" Pseudo-Random Number Generator, Passing SEED
+```
+
+This is much more complicated. The user of GAUSSIAN must maintain the seed. Moreover, GAUSSIAN and WEBER each need to return two values; here we cons 
+them together, and the user must take them apart. 
+
+
 ## {LABELS}
-## {LABELS with Side Effects} *
+
+This technique can be generalized to allow the definition of recursive local procedures. (Although the Y-operator discussed in (Note Y- operator} can be used to implement recursive local procedures, it is extremely painful to construct several mutually recursive procedures. Although mutually recursive procedures can be theoretically eliminated (by procedure integration), this process destroys the conceptual structure of the program.)
+Consider writing a procedure to construct the reverse of a given list:
+
+(DEFINE (REVERSE L) 
+        (REVERSE1 L '()))
+
+(DEFINE (REVERSE1 OLD NEW)
+        (COND ((NULL OLD) NEW)
+              (T (REVERSE1 (CDR OLD) (CONS (CAR OLD) NEW)))))
+
+The procedure REVERSE1 is irrelevant to the outside world; we would like to hide it inside REVERSE.
+Let us invent a new construction to permit the definition of local procedure definitions with names:
+
+(LABELS (((f_1 v_11 v_12 ...) body_1)
+         ((f_2 v_21 v_22 ...) body_2)
+         ...
+         ((f_N v_N1 v_N2 ...) body_N))
+         body)
+
+means the value of 'body' when evaluated in an environment where the specified procedure definitions are available. For example:
+
+(DEFINE (REVERSE L)
+        (LABELS (((REVERSE1 OLD NEW)
+                  (COND ((NULL OLD) NEW)
+                        (T (REVERSE1 (CDR OLD) (CONS (CAR OLD) NEW))))))
+                (REVERSE1 L '())))
+
+The same trick works for LABELS as for the top level: when LOOKUP1 has found а LABELS-defined function, it has the correct environment in hand for constructing a &PROCEDURE-object. We need only add a test in EVAL for the LABELS construct, and arrange for the appropriate &LABELED-objects to be constructed (see Figure N5). 
+
+```lisp
+(DEFINE (EVAL EXP ENV)
+        (COND ((ATOM EXP)
+               (COND ((NUMBERP EXP) EXP)
+                     (T (VALUE EXP ENV))))
+              ((EQ (CAR EXP) 'QUOTE)
+               (CADR EXP))
+              ((EQ (CAR EXP) 'LAMBDA)
+               (LIST '&PROCEDURE (CADR EXP) (CADDR EXP) ENV))
+              ((EQ (CAR EXP) 'LABELS)
+               (EVLABELS (CADR EXP) EXP '() '() ENV))
+              ((EQ (CAR EXP) 'COND)
+               (EVCOND (CDR EXP) ENV))
+              (T (APPLY (EVAL (CAR EXP) ENV)
+                        (EVLIS (CDR EXP) ENV)))))
+
+(DEFINE (EVLABELS DEFINITIONS EXP NAMES FNS ENV)
+        (COND ((NULL DEFINITIONS)
+               (EVAL (CADDR EXP) (BIND NAMES FNS ENV)))
+              (T (EVLABELS (CDR DEFINITIONS)
+                           EXP
+                           (CONS (CAAAR DEFINITIONS) NAMES)
+                           (CONS (LIST '&LABELED
+                                       (CDAAR DEFINITIONS)
+                                       (CADAR DEFINITIONS))
+                                 FNS)
+                           ENV))))
+
+For VALUE, LOOKUP, and BIND see Figure 3.
+For EVCOND and EVLIS see Figure 5.
+For APPLY see Figure 7.
+For LOOKUP1 see Figure 10 (not Figure 3).
+
+Figure N5
+An Evaluator For Local Lexical Scoping,
+Dynamic Top-Level References,
+and Local Definition of Recursive Procedures
+```
+
+## {LABELS with Side Effects}
+
+This implementation of LABELS (see Figure N6) applies the technique of {Note Driver Loop with Side Effects) to the implementation of LABELS in {Note LABELS). This is in fact how LABELS (or its cousin LABEL) is usually implemented in "real" LISP systems. 
+
+```lisp
+(DEFINE (EVLABELS DEFINITIONS EXP NAMES FNS ENV)
+        (COND ((NULL DEFINITIONS)
+               (EVLABELS-CLOSE (CADR EXP) EXP NIL (BIND NAMES FNS ENV)))
+              (T (EVLABELS (CDR DEFINITIONS)
+                           EXP
+                           (CONS (CAAR DEFINITIONS) NAMES)
+                           (CONS '&UNASSIGNED FNS)
+                           ENV))))
+
+(DEFINE (EVLABELS-CLOSE DEFINITIONS EXP VALS ENV)
+        (COND ((NULL DEFINITIONS)
+               (EVLABELS-CLOBBER NIL EXP (CDAR ENV) VALS ENV))
+              (T (EVLABELS-CLOSE (CDR DEFINITIONS)
+                                 EXP
+                                 (CONS (LIST '&PROCEDURE
+                                             (CDAAR DEFINITIONS)
+                                             (CADAR DEFINITIONS)
+                                             ENV)
+                                       VALS)
+                                 ENV))))
+
+(DEFINE (EVLABELS-CLOBBER HUNOZ EXP SLOTS VALS ENV)
+        (COND ((NULL VALS)
+               (EVAL (CADDR EXP) ENV))
+              (T (EVLABELS-CLOBBER (RPLACA SLOTS (CAR VALS))
+                                   EXP
+                                   (CDR SLOTS)
+                                   (CDR VALS)
+                                   ENV))))
+
+For EVAL and EVSETQ see Figure 11.
+For LOOKUP1 see Figure 3 (not Figure 10, despite Figure 11!).
+
+Figure N6
+Implementation of LABELS Using Side Effects
+```
+
 ## {Primitive Operators}
-## {PROGN Wizardry )
+
+A primitive operator might be a very complicated object in a "real" LISP implementation; it would probably have machine-language code within it. We are not interested in the details of a particular host machine here; we wish only to present a simple meta-circular definition of PRIMOP and PRIMOP-APPLY. We will notate the procedural object which is the value of CAR (say) in the initial top-level environment <THE-PRIMITIVE-PROCEDURES> "&CAR". This object has no interesting properties except that it is EQ to itself and not to any other object. The initial top-level environment therefore looks like:
+
+(((CAR CDR EQ ATOM NULL NUMBERP + - * ...)
+  &CAR &CDR &EQ &ATOM &NULL &NUMBERP &+ &- &* ...))
+
+Given this, we can define PRIMOP and PRIMOP-APPLY as in Figure N7. 
+
+```lisp
+(DEFINE (PRIMOP FUN)
+        (COND ((EQ FUN '&CAR) T)
+              ((EQ FUN '&CDR) T)
+              ((EQ FUN '&EQ) T)
+              ((EQ FUN '&ATOM) T)
+              ((EQ FUN '&NULL) T)
+              ((EQ FUN '&NUMBERP) T)
+              ((EQ FUN '&+) T)
+              ((EQ FUN &-) T)
+              ((EQ FUN &*) T)
+              ...
+              (T NIL)))
+
+(DEFINE (PRIMOP-APPLY FUN ARGS)
+        (COND ((EQ FUN '&CAR) (CAR (CAR ARGS)))
+              ((EQ FUN '&CDR) (CDR (CAR ARGS)))
+              ((EQ FUN '&EQ) (EQ (CAR ARGS) (CADR ARGS)))
+              ((EQ FUN '&ATOM) (ATOM (CAR ARGS)))
+              ((EQ FUN '&NULL) (NULL (CAR ARGS)))
+              ((EQ FUN '&NUMBERP) (NUMBERP (CAR ARGS)))
+              ((EQ FUN '&+) (+ (CAR ARGS) (CADR ARGS)))
+              ((EQ FUN &-) (- (CAR ARGS) (CADR ARGS)))
+              ((EQ FUN &*) (* (CAR ARGS) (CADR ARGS)))
+              ...
+              (T (ERROR))))
+
+Figure N7
+Meta-Circular Definition of PRIMOP and PRIMOP-APPLY
+```
+
+## {PROGN Wizardry}
+
+
+
+We defined EVPROGN in the way shown in Figure 11 rather than in this "more obvious" way:
+
+(DEFINE (EVPROGN EXPS ENV LASTVAL)
+        (COND ((NULL EXPS) LASTVAL)
+              (T (EVPROGN (CDR EXPS) ENV (EVAL (CAR EXPS) ENV)))))
+
+for a technical reason: we would like the tail-recursive properties of the code being interpreted to be reflected in the interpretation process. We specifically want recursive calls as the last subform of a PROGN form to be tail-recursive if the PROGN form itself is in a tail-recursive situation. For example, we might write a loop such as:
+
+(DEFINE (PRINTLOOP X) 
+        (COND (( = X 0) 'BLASTOFF)
+              (T (PROGN (PRINT X)
+                        (PRINTLOOP (- X 1))))))
+
+We would like this loop to be iterative, but it can be iterative only if the recursive call to PRINTLOOP is tail-recursive. Our point is that if the "obvious" version of EVPROGN is used in the interpreter, then interpretation of PRINTLOOP will not be tail-recursive because of the "stacking up of EVPROGN frames" (the last call to EVAL from EVPROGN is not tail-recursive). This is unnecessary because EVPROGN does nothing with the last value but return it anyway.
+By the way, the use of PROGN in a COND clause as shown above in PRINTLOOP is a very common situation, as is the use of a PROGN as the body of a procedure (cf. George's last experimental version of MAPCAR). As a convenience, most real LISP implementations define extended versions of COND and LAMBDA which implicitly treat clauses (resp. bodies) as PROGN forms (see Figure N8). This allows us to write such things as:
+
+(DEFINE (PRINTLOOP X) 
+        (SLEEP 1)
+        (COND ((= X 0) 'BLASTOFF)
+              (T (PRINT X)
+                 (PRINTLOOP (- X 1)))))
+
+```lisp
+(DEFINE (EVCOND CLAUSES ENV)
+        (COND ((NULL CLAUSES) (ERROR))
+              ((EVAL (CAAR CLAUSES) ENV)
+               (EVPROGN (CDAR CLAUSES) ENV NIL))
+              (T (EVCOND (COR CLAUSES) ENV))))
+
+(DEFINE (APPLY FUN ARGS)
+        (COND ((PRIMOP FUN) (PRIMOP-APPLY FUN ARGS))
+              ((EQ (CAR FUN) '&PROCEDURE)
+               (EVPROGN (CDDR FUN)
+                        (BIND (CADR FUN) ARGS (CADDDR FUN))
+                        NIL))
+              (T (ERROR))))
+
+For EVAL and EVPROGN see Figure 11.
+
+Figure N8
+Treating COND Clauses and Procedure Bodies as Implicit PROGN Forms
+```
+
+Finally, we note that PROGN is unnecessary except as a programming convenience. Because the language is defined to be executed in applicative order (cf. {Note Normal Order Loses) in [Revised Report]), we can force the sequencing of evaluation, as well as throw away unwanted values, by using LAMBDA-expressions. We first note that
+
+(PROGN e_1 e_2 ... e_N-1 e_N) ≡ (PROGN e_1 (PROGN e_2 ... (PROGN e_N-1 e_N) ... ))
+
+so that we need worry only about PROGN with two subforms: 
+
+(PROGN e_1 e_2) ≡ ((LAMBDA (HUNOZ F) (F))
+                   e_1
+                   (LAMBDA () e_2))
+
+(see [Imperative] and [Revised Report]).
+
+
 ## {QUOTE Mapping}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## {QUOTE Shafts the Compiler}
 ## {RPLACA Can Alter CAR Instead}
 ## {S-expression Postulates and Notation}
