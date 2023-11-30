@@ -1520,24 +1520,123 @@ so that we need worry only about PROGN with two subforms:
 
 ## {QUOTE Mapping}
 
+What the QUOTE notation achieves is a simple mapping of the entire set of S-expressions into a subset of itself; this mapping is trivially invertible. This is necessary in order to leave some S-expressions left over to represent other things.
+This idea may be applied to natural numbers as well. We can "quote" a number by doubling it. In this way every even number represents half of itself, just as the S-expression (QUOTE α) represents the S- expression in its cadr. This leaves all the odd numbers for other purposes. For example, we can define an ordered set of variables and let 3N encode the 'th variable, for N>10. We can also let 31 mean COND, 32 mean LAMBDA, etc. We can then encode a procedure call as 5^f 7^x 11^y 13^z ... where f is the encoding of the procedure and x, y, z, ... are the encodings of the arguments; COND forms and LAMBDA-expressions can be similarly encoded. For example,
 
+(COND ((NULL A) 3) (T 6)) 
 
+might be encoded as the number
 
+```
+               10         48 12
+         1421 3  ) 6     3  7  )
+        3    7    7 )  (5
+      (5             11
+  1 (5
+ 3 7
+5
+```
 
-
-
-
-
-
-
-
+In this manner we can encode all of the LISP language as natural numbers. This is an example of the technique of "Gödelization". 
 
 
 ## {QUOTE Shafts the Compiler}
+
+We emphasize that it is not the presence of dynamically scoped variables which makes standard LISP difficult for compilers, but the very fact that the LAMBDA-expressions are quoted. It is impossible in general to determine whether a quoted S-expression is intended to be code or just some constant data. Most LISP systems provide another kind of QUOTE called FUNCTION. In LISP 1 [LISP IM] and LISP 1.5 [LISP 1.5M] this used to produce FUNARG objects (we call them &PROCEDURE objects), but in more recent LISP systems [Moon] [Teitelman] an ordinary FUNCTION-expression has been made equivalent to a quoted expression, serving only as a flag to the compiler that the quoted expression is intended as code. However, the introduction of the "'" notation for quoted expressions has led many programmers to prefer the use of QUOTE to FUNCTION for reasons of conciseness. This in turn has required changes to the compiler to specially recognize standard situations where this is used (e.g. the functional argument to MAPCAR), but this patch doesn't solve the problem generally.
+
+
 ## {RPLACA Can Alter CAR Instead}
+
+We have implicitly thought of the RPLACA operation as modifying a cons so as to have a different car. However, there is an interpretation in which RPLACA is thought of as modifying the CAR operator. Taking the car of an object always involves both the CAR operator and the object. When we perform an RPLACA on object denoted by FOO, all we can say is that the value of (CAR FOO) may have changed. It is not necessarily clear what aspect of that expression has changed. Using this idea, we can express RPLACA in terms of SETQ as in Figure N9. Note that we depend on EQ to distinguish different results of CONS.
+
+```lisp
+(DEFINE (RPLACA X Y)
+        (PROGN ((LAMBDA (OLDCAR)
+                        (SETQ CAR
+                              (LAMBDA (Z)
+                                      (COND ((EQ Z X) Y)
+                                            (T (OLDCAR X))))))
+                CAR)
+               X))
+
+Figure N9
+RPLACA in Terms of SETQ Which Modifies CAR
+```
+
 ## {S-expression Postulates and Notation}
+
+
+S-expressions form a number system analogous to that for the natural numbers. Each can be used to encode arbitrary strings of symbols by means of "Gödelization", but the S-expression encoding is usually far more convenient than the numerical encoding.
+We repeat here the informal characterization of Peano's postulates and the analogous postulates for S-expressions from [Levin]:
+
+#### The Postulates of Arithmetic 
+1. Zero is a number.
+2. The successor of a number is a number. 3. Zero is not the successor of any number.
+4. No two numbers have the same successor.
+5. (Induction Principle) Any property which is true for zero, and is such that if it is true for some number it is also true for the successor of that number, it is true for all numbers.
+
+Zero is notated as 0, and the successor of any number N is notated as N'. As a convenience we define alternative notations for numbers other than zero, such as decimal place-value notation. Thus for 0''''''''''''' often write 13.
+
+#### The Postulates for S-expressions 
+1. Atoms are S-expressions. 
+2. The cons of any two S-expressions is an S-expression. 
+3. An atom is not the cons of any two S-expressions. 
+4. If α differs from β, or if γ differs from δ, then cons of α and γ differs from cons of β and δ.
+5. (Induction Principle) Any property which is true of all atoms, and is such that if it is true for two S-expressions it is also true for their cons, is true for all S-expressions.
+
+Atoms are notated as strings of letters and digits. The cons of two S-expressions α and β is notated (α . β). As a convenience, we define alternative notations for some commonly used forms of S-expression, such as list notation. The atom NIL is called the "empty list"; we write it as (). If (α β γ ... δ) is (the notation for) a list π (where the "..." is meant as a meta-syntactic ellipsis), then the cons of ε and π is written (ε α β ... δ). We also define quotation notation, in which (QUOTE α) is written as 'α.
+(This definition of S-expressions applies to "pure LISP", which has no side effects. In Part Two, when the RPLACA and RPLACD operators are introduced, the phrase "the cons of" will not be well-defined.)
+
+
 ## {This ain't A-lists}
+
+Our symbol table routines are not the same as those in LISP 1.5. Their behavior is approximately the same, but the data structures involved differ. The LISP 1.5 routines (PAIRLIS and ASSOC) use the traditional "association list" format:
+
+![fig1.png](fig1.png)
+
+Our routines (BIND and LOOKUP), besides having nicer names, are more efficient because the number of conses performed to bind a given number of variables is usually smaller (we arrange for the environment structure to share the variable lists already contained in LAMBDA-expressions). Morever, the environment is organized into "frames" or "contours", which will be of some utility later. The environment is represented in this form:
+
+
+![fig2.png](fig2.png)
+
+
 ## {Value Quibble}
+
+
+"Did he ever return?
+ No, he never returned,
+ And his fate is still unlearned..."
+- The Man Who Never Returned (Charlie on the MTA)
+
+We said "EVAL's purpose is to determine the values of expressions". But what is the value of the expression (DRIVER)? It is certainly not an illegal or useless expression to evaluate, yet it has no value. The purpose of the expression is to cause a certain process to be evolved; it is an "infinite loop", which never returns. This process includes side effects (READ and PRINT) through which it interacts with the user. This situation arises because the system of interest is broken into two parts with independent state: the computer and the user. We will have more to say about this later.
+
+
 ## {Weber}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## {Y-operator}
 # References
