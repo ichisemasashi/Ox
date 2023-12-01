@@ -1613,30 +1613,174 @@ We said "EVAL's purpose is to determine the values of expressions". But what is 
 
 ## {Weber}
 
+To continue our GAUSSIAN example (see (Note Gaussian)), we can try to remove the side-effect from RANDOM while avoiding the passing around of SEED by pushing RANDOM up to the top level (see Figure N10). RANDOM-DRIVER takes a function F and an initial seed (reminiscent of <THE-PRIMITIVE - PROCEDURES>), and continually stuffs random numbers into F. Each call to F must produce a new F (a kind of continuation [Reynolds]). Using this, we can arrange for numbers with a "Gaussian" distribution to be generated.
 
+```lisp
+(DEFINE (RANDOM-DRIVER F SEED) 
+        ((LAMBDA (NEWSEED)
+                 (RANDOM-DRIVER (F NEWSEED) NEWSEED))
+         ((LAMBDA (Z)
+                  (COND ((> Z 0) Z)
+                        (T (+ Z -32768.))))
+          (* SEED 899.))))
 
+(DEFINE (GAUSSIAN G)
+        (WEBER 0 43 G))
 
+(DEFINE (WEBER X N H)
+        (COND ((= N 0) (H X))
+              (T (LAMBDA (R)
+                         (WEBER (+ X R) (- N 1) H)))))
 
+(DEFINE (DRIVER USERFN INITSEED)
+        (RANDOM-DRIVER (GAUSSIAN USERFN) INITSEED))
 
+Figure N10
+"Gaussian" Pseudo-Random Number Generator without Passing SEED Around
+```
 
+In this way, a user function can be provided to DRIVER (along with the initial seed), and the user function will have "Gaussian" numbers stuffed into it. For example:
 
+(DEFINE (PR) (PROGN (PRINT R) P))
 
+(DRIVER P 11)
 
+will print an interminable sequence of "Gaussian" numbers. Notice the structure of the program: the RANDOM procedure calls GAUSSIAN, which in turn calls the user procedure. We have completely everted the overall system. The more layers in the original system piled on top of GAUSSIAN, the more layers will appear inside-out in this version.
+Now there are two other funny things about this. One is that we had to use a side effect (PRINT) to get the answer out; the other is that it's hard to make it stop! These problems are related. The structure of RANDOM-DRIVER is an infinite loop, as with all drivers. Because RANDOM-DRIVER never returns a value, there is no way to get an answer out without a side- effect like PRINT. 
+We can arrange to signal RANDOM-DRIVER that по more values are desired, and to return a value (see Figure N11). 
 
+```lisp
+(DEFINE (RANDOM-DRIVER F SEED)
+        (COND ((CAR F) (CDR F))
+              (T ((LAMBDA (NEWSEED)
+                          (RANDOM-DRIVER ((CDR F) NEWSEED) NEWSEED))
+                  ((LAMBDA (Z)
+                           (COND ((> Z 0) Z)
+                                 (T (+ Z -32768.))))
+                   (* SEED 899.))))))
 
+(DEFINE (GAUSSIAN G)
+        (WEBER 0 43 G))
 
+(DEFINE (WEBER X N H)
+        (COND ((= N 0) (H X))
+              (T (CONS NIL
+                       (LAMBDA (R)
+                               (WEBER (+ X R) (- N 1) H))))))
 
+(DEFINE (DRIVER USERFN)
+        (RANDOM-DRIVER (GAUSSIAN USERFN) 43))
 
+Figure N11
+"Gaussian" Random-Number Generator "Top Level" without Side Effects
+```
 
+Using this new definition, we can write: 
 
+(DEFINE (P R) (CONS T R))
 
+(DRIVER P 11) 
 
-
-
-
-
-
+which eventually returns one "Gaussian" number. (Doing something with more than one "Gaussian" number takes a little more work...)
+Notice that in order to make this work, RANDOM-DRIVER had to know an awful lot about its functional argument; a fairly complicated protocol had to be developed for handshaking. We might argue that this exercise, while it has indeed removed all obvious side effects, has somewhat tarnished the modularity of the RANDOM program. In any case, the structure of our final program is not exactly what we had in mind when we started.
 
 
 ## {Y-operator}
+
+While the interpreter of Figure 8 cannot DEFINE recursive procedures, it is possible to define recursive procedures by using a variant of the "paradoxical combinator", also known as the Y-operator: 
+
+(DEFINE (Y F)
+        ((LAMBDA (G)
+                 (LAMBDA (X)
+                         ((F (G G)) X)))
+         (LAMBDA (G)
+                 (LAMBDA (X)
+                         ((F (G G)) X)))))
+
+Using this we define the doubly-recursive algorithm for computing the Fibonacci function:
+
+(DEFINE (FIB K) 
+        ((Y (LAMBDA (F)
+                    (LAMBDA (N)
+                            (COND ((= N 0) 1)
+                                  ((= N 1) 1)
+                                  (T (+ (F (- N 1)) (F (- N 2))))))))
+         K))
+
+That this manages to work is truly remarkable. Notice that this is almost identical to the LABEL construct which was actually introduced by LISP 1, though at the time it was invented the implementors didn't realize this correspondence [LISP History].
+
 # References
+
+(Entries marked with a "*" are not referenced in the text.) 
+
+[Church] 
+Church, Alonzo. The Calculi of Lambda Conversion. Annals of Mathematics Studies Number 6. Princeton University Press (Princeton, 1941). Reprinted by Klaus Reprint Corp. (New York, 1965).
+
+[Debunking] 
+Steele, Guy Lewis Jr. "Debunking the 'Expensive Procedure Call' Myth." Proc. ACM National Conference (Seattle, October 1977),153- 162. Revised as MIT AI Memo 443 (Cambridge, October 1977). 
+
+[Declarative] 
+Steele, Guy Lewis Jr. LAMBDA: The Ultimate Declarative. AI Memo 379. MIT AI Lab (Cambridge, November 1976).
+
+[Fischer] 
+Fischer, Michael J. "Lambda Calculus Schemata." Proceedings of ACM Conference on Proving Assertions about Programs. SIGPLAN Notices (January 1972).
+
+[Goto] 
+Eiichi. Monocopy and Associative Algorithms in an Extended LISP. Information Science Laboratory, University of Tokyo (May 1974). 
+
+[Hewitt and Smith] 
+Hewitt, Carl, and Smith, Brian. . "Towards a Programming Apprentice." IEEE Transactions on Software Engineering SE-1, 1 (March 1975), 26-45. 
+
+[Imperative] 
+Steele, Guy Lewis Jr., and Sussman, Gerald Jay. LAMBDA: The Ultimate Imperative. AI Memo 353. MIT AI Lab (Cambridge, March 1976). 
+
+[Kleene] 
+Kleene, Stephen Cole. Introduction to Metamathematics. Von Nostrand (Princeton, 1950).
+
+[Landin]
+Landin, Peter J. "A Correspondence between ALGOL 60 and Church's Lambda-Notation." Comm. ACM 8, 2-3 (February and March 1965).
+
+[Levin] 
+Levin, Michael. Mathematical Logic for Computer Scientists. MIT Project MAC TR-131 (Cambridge, June 1974).
+
+[LISP 1M] 
+McCarthy, J., Brayton, R., Edwards, D., Fox, P., Hodes, L., Luckham, D., Maling, K., Park, D., and Russell, S. LISP Programmer's Manual. Artifical Intelligence Group, Computation Center and Research Laboratory of Electronics, MIT (Cambridge, March 1960).
+
+[LISP 1.5M ] 
+McCarthy, John, et al. LISP 1.5 Programmer's Manual. The MIT Press (Cambridge, 1962). 
+
+[LISP History]
+McCarthy, John. "History of LISP." To appear in Proceedings of the SIGPLAN History of Programming Languages Conference, June 1978. 
+
+[McDermott and Sussman]
+McDermott, Drew V. and Sussman, Gerald Jay. The CONNIVER Reference Manual. AI Memo 295a. MIT AI Lab (Cambridge, January 1974).
+
+[Moon]
+Moon, David A. MacLISP Reference Manual, Revision 0. Project MAC, MIT (Cambridge, April 1974). 
+
+[Moses]
+Moses, Joel. The Function of FUNCTION in LISP. AI Lab (Cambridge, June 1970).
+
+[Naur] 
+Naur, Peter (ed.), et al. "Revised Report on the Algorithmic Language ALGOL 60." Comm. ACM 6, 1 (January 1963), 1-20.
+
+[Revised Report] 
+Steele, Guy Lewis Jr., and Sussman, Gerald Jay. The Revised Report on SCHEME. MIT AI Memo 452 (Cambridge, January 1978). 
+
+[Reynolds]
+"Definitional Interpreters for Higher Order Programming Languages." ACM Conference Proceedings 1972. 
+
+[Rulifson]
+Rulifson, J.F.. Derksen, J.A., and Waldinger, R.J. QA4: A Procedural Calculus for Intuitive Reasoning. Techical Note 73. Artificial Intelligence Center, Stanford Research Institute (Menlo Park, California, November 1972).
+
+[SCHEME] 
+Sussman, Gerald Jay, and Steele, Guy Lewis Jr. SCHEME: An Interpreter for Extended Lambda Calculus. AI Memo 349. MIT AI Lab (Cambridge, December 1975).
+
+[Smith and Hewitt]
+Smith, Brian C. and Hewitt, Carl. A PLASMA Primer (draft). MIT AI Lab (Cambridge, October 1975).
+
+[Teitelman] 
+Teitelman, Warren. InterLISP Reference Manual. Revised edition. Xerox Palo Alto Research Center (Palo Alto, 1975). 
+
+[Warren]
+Warren, David H.D., and Pereira, Luis. "PROLOG: The Language and Its Implementation Compared with LISP." Proceedings of the Symposium on Artifical Intelligence and Programming Languages (Rochester, New York, August 1977). SIGPLAN Notices 12, 8, SIGART Newsletter 64 (August 1977), 109-115.
