@@ -110,35 +110,34 @@ factorial(successor(x)) = successor(x)*factorial(x)
 
 factorial[x] = [x=0 → 1; T→ x*factorial[x-1]] 
 
-where "[a → b; T→ c]" essentially means "if a then b else c". The recursive function theory version depends on selecting which of two equations to use by matching the argument to the left-hand sides (such a discipline is actually used in the PROLOG language [Warren]); the early LISP version represents this decision as a conditional expression. 
-The theory of recursion equations deals with functions over the natural numbers. In LISP, however, one is interested in being able to manipulate algebraic expressions, programs, and other symbolic expressions as data structures. While such expressions can be encoded as numbers (using the technique of "arithmetization" developed by Kurt Gödel), such an encoding is not very convenient. Instead, a new kind of data called "S-expressions" (for "symbolic expressions") is introduced specifically to provide convenient encodings. S-expressions can be defined by a set of formal inductive axioms analogous to the Peano postulates used to define natural numbers. Here we will give only an informal and incomplete definition of S-expressions; for a more complete description, see (Note S-expression Postulates and Notation). 
-For our purposes we will need only the special cases of S-expressions called atoms and lists. An atom is an "indivisible" data object, which we denote by writing a string of letters and digits; if only digits are used, then the atom is considered to be a number. Many special characters such as "-" and "+" are considered to be letters; we will see below that it is not necessary to specially reserve them 
-them for for use as operator symbols. A list is a (possibly empty) sequence of S-expressions, notated by writing the S-expressions in order, between a set of parentheses and separated by spaces. A list of the atoms "FOO", "43", and "BAR" would be written "(FOO 43 BAR)". Notice that the definition of a list is recursive. For example, 
+ここで"[a→b; T→ c]"は本質的に "if a then b else c "を意味する。再帰関数理論のバージョンは、左辺に引数をマッチさせることによって2つの方程式のどちらを使うかを選択することに依存する（このような規律はPROLOG言語[Warren]で実際に使われている）。初期のLISPバージョンは、この決定を条件式として表現している。
+再帰式の理論は自然数上の関数を扱う。一方LISPでは、代数式、プログラム、その他の記号式をデータ構造として操作することに関心がある。このような式は（クルト・ゲーデルが開発した「算術化」の技法を使って）数値として符号化することができるが、そのような符号化はあまり便利ではない。その代わりに、「S式」（「記号式」の意）と呼ばれる新しい種類のデータが、便利な記号化を提供するために特別に導入された。S式は、自然数の定義に使われるペアノ定理のような形式的帰納的公理によって定義することができる。ここでは、S式の非公式で不完全な定義のみを示す。より完全な説明については、（S式の定理と表記に注意）を参照のこと。
+我々の目的には、アトムとリストと呼ばれるS式の特殊なケースだけが必要である。アトムは " 分けられない " データ・オブジェクトであり、文字と数字の文字列で表す。数字だけの場合、アトムは数字とみなされる。"-"や "+"などの多くの特殊文字は文字とみなされる。演算子記号として使用するために特別に確保する必要がないことは後述する。リストはS式の（空の可能性もある）列であり、括弧と空白で区切られたS式を順番に書くことで表記される。アトム "FOO"、"43"、"BAR "のリストは"(FOO 43 BAR) "と書く。リストの定義は再帰的であることに注意。例えば 
 
 (DEFINE (SECOND X) (CAR (CDR X))) 
 
-is a list of three things: the atomic symbol DEFINE, a list of the two atomic symbols SECOND and x, and another list of two other things. 
-We can use S-expressions to represent algebraic expressions by using "Cambridge Polish" notation, essentially a parenthesized version of prefix Polish notation. Numeric constants are encoded as numeric atoms; variables are encoded as non-numeric atoms (which henceforth we will call atomic symbols); and procedure invocations are encoded as lists, where the first element of the list represents the procedure and the rest represent the arguments. For example, the algebraic expression "a*b+c*d" can be represented as "(+ (* a b) (* c d))". Notice that LISP does not need the usual precedence rules concerning whether multiplication or addition is performed first; the parentheses explicitly define the order. Also, all procedure invocations have a uniform syntax, no matter how many arguments are involved. Infix, superscript, and subscript notations are not used; thus the expression "Jp(x^2+1)" would be written "(J p (+ (* × 2) 1))". 
-To encode a conditional expression 
+は3つの要素のリストである。アトム記号DEFINE、2つのアトム記号SECONDとxのリスト、そしてその他の2つの要素のリストである。
+S式を使って代数的な式を表現するには、"ケンブリッジ・ポーランド "記法を使う、要するにポーランド記法の接頭辞を括弧でくくったものである。数値定数は数値アトムとして記号化され、変数は非数値アトム（以後アトム記号と呼ぶ）として記号化され、手続き呼び出しはリストとして記号化される。リストの最初の要素は手続きを表し、残りはその引数を表す。例えば、代数式 "a*b+c*d "は"(+ (* a b) (* c d)) "と表すことができる。LISPでは、掛け算と足し算のどちらが先に実行されるかに関する通常の優先順位規則は必要なく、括弧が順序を明確に定義していることに注意してください 。また、引数の数に関係なく、すべての手続き呼び出しは統一された構文を持つ。従って、"Jp(x^2+1) "という式は"(J p (+ (* × 2) 1)) "と書かれる。
+条件式を記号化するには 
 
 [p_1 → e_1; p_2 → e_2; ... ; p_N → e_N]
 
-(which means to evaluate the predicates p_j in order until a in order until a true one is found, at which point the value of e_j is taken to be the value of the conditional) we write the S-expression
+(これは、述語p_jを真が見つかるまで順にaまで評価し、その時点でe_jの値を条件式の値とすることを意味する)S式は次のように書く。
 
 (COND (P1 e1) (p2 e2) ... (pn en))
 
-We can now encode sets of LISP recursion equations as S-expressions. For the equation 
+LISP再帰式の集まりをS式として表現できるようになった。式 
 
 factorial[x] = [x=0 → 1; T→ x*factorial[x-1]]
 
-we write the S-expression
+をS式で表す。
 
 (DEFINE (FACTORIAL X)
            (COND ((= X 0) 1)
                  (T (* X (FACTORIAL ( X 1))))))
 
 
-(We could also have written 
+(以下のように書くこともできる。 
 
 (DEFINE (FACTORIAL X) (COND ((=
 X 0) 1) (T (* X (FACTORIAL (- X
