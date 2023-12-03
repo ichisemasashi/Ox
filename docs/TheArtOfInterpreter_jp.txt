@@ -97,16 +97,16 @@ References
 
 
 
-# Part Zero LISP and Interpreters 
+# 第零部 LISPとインタープリタ 
 
-## Recursion Equations
+## 再帰式
 
-Contrary to popular belief, LISP was not originally derived from Church's λ-calculus [Church] [LISP History]. The earliest LISP did not have a well-defined notion of free variables or procedural objects. Early LISP programs were similar to recursion equations, defining functions on symbolic expressions ("S-expressions"). They differed from the equations of pure recursive function theory [Kleene] by introducing the conditional expression construction (often called the "McCarthy conditional"), to avoid "pattern-directed invocation". That is, in recursive function theory one would define the factorial function by the following two equations: 
+一般に信じられていることに反して、LISPはもともとChurchのλ-calculus [Church] [LISP History]から派生したものではない。初期のLISPは、自由変数や手続きオブジェクトの概念が明確に定義されていなかった。初期のLISPプログラムは再帰式に似ており、記号式（"S式"）に関数を定義していた。純粋な再帰関数論[Kleene]の方程式とは異なり、「パターン指向の呼び出し」を避けるために、条件式の構成（しばしば「マッカーシー条件式」と呼ばれる）を導入していた。つまり、再帰関数理論では階乗関数を次の2つの式で定義した： 
 
 factorial(0) = 1 
 factorial(successor(x)) = successor(x)*factorial(x) 
 
-In early LISP, however, one would have written: 
+しかし、初期のLISPでは、こう書いていた：
 
 factorial[x] = [x=0 → 1; T→ x*factorial[x-1]] 
 
