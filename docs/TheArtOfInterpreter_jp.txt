@@ -143,12 +143,12 @@ factorial[x] = [x=0 → 1; T→ x*factorial[x-1]]
 X 0) 1) (T (* X (FACTORIAL (- X
 1))))))
 
-but we conventionally lay out S-expressions so that they are easy to read.) 
-We now have a complete encoding for algebraic expressions and LISP recursion equations in the form of S-expressions. Suppose that we now want to write a LISP program which will take such an S-expression and perform some useful operation on it, such as determining the value of an algebraic expression. We need some procedures for distinguishing, decomposing, and constructing S-expressions. 
-The predicate ATOM, when applied to an S-expression, produces true when given an atom and false otherwise. The empty list is considered to be an atom. The predicate NULL is true of only the empty list; its argument need not be a list, but may be any S-expression. The predicate NUMBERP is true of numbers and false of atomic symbols and lists. The predicate EQ, when applied to two atomic symbols, is true if the two atomic symbols are identical. It is false when applied to an atomic symbol and any other S-expression. (We have not defined EQ on two lists yet; this will not become important, or even meaningful, until we discuss side effects.) 
-The decomposition operators for lists are traditionally called CAR and CDR for historical reasons. [LISP History] CAR extracts the first element of a list, while CDR produces a list containing all elements but the first. Because compositions of CAR and CDR are commonly used in LISP, an abbreviation is provided: all the C's and R's in the middle can be squeezed out. For example, "(CDR (CDR (CAR (CDR X))))" can be written as "(CDDADR X)". 
-The construction operator CONS, given an S-expression and a list, produces a new list whose car is the S-expression and whose cdr is the list. The operator LIST can take any number of arguments (a special feature), and produces a list of its arguments. 
-We can now write some interesting programs in LISP to deal with S-expressions. For example, we can write a predicate EQUAL, which determines whether two S-expressions have the same CAR-CDR structure: 
+しかし、S式は読みやすいようにレイアウトするのが慣例である)。
+これで代数式とLISP再帰式をS式で完全に表現できるようになった。このようなS式を用いて、代数式の値を決定するような有用な処理を行うLISPプログラムを書きたいとする。S式を区別し、分解し、組み立てる処理が必要である。
+述語ATOMをS式に適用すると、アトムが与えられたときに真を、そうでないときに偽を生成する。空リストはアトムとみなされる。述語NULLは、空リストに対してのみ真であり、その引数はリストである必要はなく、任意のS式でよい。述語NUMBERPは、数に対して真であり、アトムシンボルとリストに対して偽である。述語EQは、2つのアトム記号に適用されたとき、2つのアトム記号が同一であれば真である。これは、アトム記号とその他のS式に適用されると偽となる。(2つのリストに対するEQはまだ定義していない。これは副作用について議論するまでは重要ではないし、意味もないだろう)。
+リストに対する分割演算子は、歴史的な理由から伝統的にCARとCDRと呼ばれています。[ LISP History] CARはリストの最初の要素を抽出し、CDRは最初の要素以外のすべての要素を含むリストを生成します。CARとCDRの組み合わせはLISPでよく使われるため、省略形が用意されている。例えば、「(CDR (CDR (CAR (CDR X)))」は「(CDDADR X)」と書くことができる。）
+構築演算子CONSは、S式とリストが与えられると、carがS式でcdrがリストである新しいリストを生成します。LIST演算子は任意の数の引数を取ることができ（特別な機能）、引数のリストを生成する。
+これでLISPでS式を扱う面白いプログラムが書けるようになった。例えば、2つのS式が同じCAR-CDR構造を持つかどうかを判定する述語EQUALを書くことができる： 
 
 
 (DEFINE (EQUAL X Y)
