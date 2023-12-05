@@ -160,32 +160,32 @@ X 0) 1) (T (* X (FACTORIAL (- X
                  ((EQUAL (CAR X) (CAR Y))
                   (EQUAL (CDR X) (CDR Y)))))
 
-Here we have used the standard names T and NIL to represent true and false. (Traditionally NIL is also considered to be the empty list, but we will avoid this here, writing "()" for the empty list.) 
-Because LISP programs are represented as LISP data structures (S-expressions), there is a difficulty with representing constants. For example, suppose we want to determine whether or not the value of the variable x is the atomic symbol "FOO". We might try writing:
+ここでは、TとNILという標準的な名前を使って真と偽を表している。(伝統的にNILは空リストとも考えられているが、ここではこれを避け、空リストには"()"と書くことにする)。
+LISPのプログラムはLISPのデータ構造（S式）として表現されるため、定数を表現する際に難しい点がある。例えば、変数xの値がアトム記号 "FOO "であるかどうかを判定したいとする。次のように書いてみよう：
 
 (EQ X FOO)
 
-This doesn't work. The occurrence of "FOO" does not refer to the atomic symbol FOO as a constant; it is treated as a variable, just as "x" is. 
-The essential problem is that we want to be able to write any S-expression as a constant in a program, but some S-expressions must be used to represent other things, such as variables and procedure invocations. To solve this problem we invent a new notation: (QUOTE x) in a program represents the constant S-expression x. {Note QUOTE Mapping) Thus we can write our test as "(EQ X (QUOTE FOO))". Similarly, 
+これはうまくいかない。"FOO "の出現は、アトム記号FOOを定数として参照するのではなく、"x"と同様に変数として扱われる。
+本質的な問題は、プログラムではどんなS式でも定数として書けるようにしたいが、S式の中には変数や 手続きの呼び出しなど、他のものを表すのに使わなければならないものもあるということだ。この問題を解決するために、私たちは新しい表記法を考案した。プログラム中の(QUOTE x)は定数S式xを表している。{Note QUOTE Mapping} したがって、私たちはテストを"(EQ X (QUOTE FOO)) "と書くことができる。同様に 
 
 (EQUAL X (LIST Y Z))
 
-constructs a list from the values of y and z, and compares the result to the value of x, while
+では、yとzの値からリストを作成し、その結果をxの値と比較する。一方
 
 (EQUAL X (QUOTE (LIST Y Z))) 
 
-compares the value of x to the constant S-expression "(LIST Y Z)". Because the QUOTE Construction is used so frequently in LISP, we use an abbreviated notation: "'FOO" is equivalent to "(QUOTE FOO)". This is only a notational convenience; the two notations denote the same S-expression. (S-expressions are not character strings, but data objects with a certain structure. We use character strings to notate S-expressions on paper, but we can use other notations as well, such as little boxes and arrows. We can and do allow several different character strings to denote the same S-expression.) 
+はxの値を定数S式"(LIST Y Z)"と比較する。LISPではQUOTE構文が頻繁に使用されるため、省略表記を使用する： "'FOO" は "(QUOTE FOO)" と等価である。これは単なる表記上の便宜であり、この2つの表記は同じS式を表す。(S式は文字列ではなく、ある構造を持つデータ・オブジェクトである 。S 式を紙上で表記するには文字列を使用するが、小さなボックスや矢印など、他の表記法も使用できる。また、同じS式を複数の異なる文字列で表記することも可能である)。
 
 
-## An Interpreter for LISP Recursion Equations
+## LISP 再帰方程式のインタープリター
 
-We now have enough machinery to begin our examination of the genetic history of LISP. We first present a complete interpreter for LISP recursion equations. The language interpreted is a dialect of LISP which allows nо free variables except for names of primitive or defined procedures, and no definitions of procedures within other procedures.
-The driver loop reads in definitions of procedures of the form: 
+これでLISPの進化の歴史を調べるのに十分な環境が整った。最初にLISP再帰方程式の完全なインタープリターを紹介する。解釈される言語はLISPの方言であり、基本または定義された手続き名以外の自由変数を許さず、他の手続き内の手続き定義も許さない。
+ドライバ・ループは次のような手続き定義を読み取る： 
 
-(DEFINE (F A B C ...) <expression in A B C ... and F G H ...>)
+(DEFINE (F A B C ...) <A B C ..., F G H ...の式>) 
 
-and saves them. It can also read in requests to apply some defined procedure to some arguments (or, more generally, to evaluate any expression), in which case it prints the resulting value. An expression may consist of variable references, constants (numbers and quoted S-expressions), procedure calls, and conditional expressions (COND). The defined procedures may refer to each other and to initially supplied primitive procedures (such as CAR, CONS, etc.). Definitions may contain "forward references", as long as all necessary definitions are present at the time of a request for computation. The interpreter itself is presented here as a set of such definitions, and so is meta-circular. 
-The language is intended to be evaluated in applicative order; that is, all arguments to a procedure are fully evaluated before an attempt is made to apply the procedure to the arguments. (It is necessary to state this explicitly here, as it is not inherent in the form of the meta-circular definition. See [Reynolds] for an explication of this problem.) The driver loop (see Figure 1) is conceptually started by a request to invoke DRIVER with no arguments. Its task is to first print the message "LITHP ITH LITHTENING" (a tradition of sorts) and then invoke DRIVER-LOOP. The expression <THE-PRIMITIVE-PROCEDURES> is intended to represent a constant list structure, containing definitions of primitive procedures, to be supplied to DRIVER-LOOP. 
+そして、それらを保存する。また、定義された手続きをいくつかの引数に適用する（あるいは、より一般的には、任意の式を評価する）要求を読み取ることもできます。式は、変数参照、定数（数値とクォートされたS式）、手続き呼び出し、条件式（COND）で構成される。定義された手続きは、互いに参照したり、最初に与えられた基本手続き（CAR、CONSなど）を参照したりすることができる。定義は、計算要求時に必要な定義がすべて存在する限り、「前方参照」を含むことが可能である。インタープリタそのものは、ここではそのような定義の集まりとして提示されているので、メタ循環インタプリタである。
+この言語は適用順序で評価されることを意図している。つまり、手続きを引数に適用しようとする前に、手続きに対するすべての引数が完全に評価される。(これはメタ循環定義の形式には内在しないので、ここで明示的に述べる必要がある。この問題の説明は[Reynolds]を参照)。ドライバループ(図1参照)は、概念的には、引数なしでDRIVERを呼び出す要求によって開始される。そのタスクは、最初に "LITHP ITH LITHTENING "というメッセージ( ある種の伝統)をプリントし、次にDRIVER-LOOPを起動することである。<THE-PRIMITIVE-PROCEDURES>式は、DRIVER-LOOPに供給されるプリミティブ手続きの定義を含む定数リスト構造を表すことを意図している。
 
 ```lisp
 (DEFINE (DRIVER)
