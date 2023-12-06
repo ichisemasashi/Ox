@@ -207,9 +207,8 @@ Figure 1
 Top Level Driver Loop for a Recursion Equations Interprete
 ```
 
-DRIVER-LOOP reads an S-expression from the input stream and passes it, along with the current procedure definitions, to DRIVER-LOOP-1. This procedure in turn determines whether the input S-expression is a definition. If it is, then it uses BIND (described below) to produce an augmented set of procedure definitions, prints the name of the defined procedure, and calls DRIVER-LOOP to repeat the process. The augmented set of procedures is passed to DRIVER-LOOP, and so the variable PROCEDURES always contains all the accumulated definitions ever read. If the input 
-input S-expression is not a definition, then it is given to the evaluator EVAL, whose purpose is to determine the values of expressions. {Note Value Quibble) The set of currently defined procedures is also passed to EVAL. 
-The process carried on by the driver loop is often called the "top level"; all user programs and requests are run "under" it. The growing set of procedure definitions is called the "top-level environment"; this environment changes in the course of the user interaction, and contains the state of the machine as perceived by the user. It is within this environment that user programs are executed. 
+DRIVER-LOOPは入力ストリームからS式を読み取り、それを現在の手続き定義とともにDRIVER-LOOP-1に渡す。この手続きは、入力されたS式が定義であるかどうかを判断する。もしそうであれば、BIND（後述）を使って手続き定義の拡張された集合を生成し、定義された手続きの名前を表示し、このプロセスを繰り返すためにDRIVER-LOOPを呼び出します。拡張された手続き集合はDRIVER-LOOPに渡されるため、変数PROCEDURESは常にこれまでに読み込まれたすべての累積された定義を含んでいる。入力されたS式が定義でない場合は、式の値を決定することを目的とする評価器EVALに渡される。{Note Value Quibble}。現在定義されている手続きの集合もEVALに渡される。
+driver loopによって実行される処理は、しばしば "トップレベル "と呼ばれ、 すべてのユーザープログラムとリクエストは "その下 "で実行される。増え続ける手続き定義の集合は「トップレベル環境」と呼ばれる。この環境はユーザーとの対話の過程で変化し、ユーザーによって認識されるマシンの状態を含む。ユーザープログラムはこの環境の中で実行される。
 
 ```lisp
 (DEFINE (EVAL EXP ENV PROCEDURES)
