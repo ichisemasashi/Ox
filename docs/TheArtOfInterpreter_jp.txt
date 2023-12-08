@@ -204,7 +204,7 @@ LISPのプログラムはLISPのデータ構造（S式）として表現され�
                             (PRINT (CAADR FORM)))))
               (T (DRIVER-LOOP PROCEDURES (PRINT (EVAL FORM '() PROCEDURES))))))
 Figure 1
-Top Level Driver Loop for a Recursion Equations Interprete
+再帰式インタープリタのトップレベル・ドライバ・ループ
 ```
 
 DRIVER-LOOPは入力ストリームからS式を読み取り、それを現在の手続き定義とともにDRIVER-LOOP-1に渡す。この手続きは、入力されたS式が定義であるかどうかを判断する。もしそうであれば、BIND（後述）を使って手続き定義の拡張された集合を生成し、定義された手続きの名前を表示し、このプロセスを繰り返すためにDRIVER-LOOPを呼び出します。拡張された手続き集合はDRIVER-LOOPに渡されるため、変数PROCEDURESは常にこれまでに読み込まれたすべての累積された定義を含んでいる。入力されたS式が定義でない場合は、式の値を決定することを目的とする評価器EVALに渡される。{Note Value Quibble}。現在定義されている手続きの集合もEVALに渡される。
@@ -243,7 +243,7 @@ driver loopによって実行される処理は、しばしば "トップレベ�
                        (EVLIS (CDR ARGLIST) ENV PROCEDURES)))))
 
 Figure 2
-Evaluator for a Recursion Equations Interpreter
+再帰式インタープリタの評価器
 ```
 
 評価システム（図2参照）は、2つの概念的な構成要素に分かれている： EVALとAPPLYである。EVALは式を分類し、その評価を指示する。単純な式（定数や変数など）は直接評価できる。複雑な手続き呼び出し（正確には "組み合わせ "と呼ばれる）の場合、EVALは手続き定義を検索し、（EVLISを使用して）引数を再帰的に評価し、次にAPPLYを呼び出す。APPLYは手続きを分類し、その実行を指示する。単純な手続き（プリミティブ演算子）は直接実行される。複雑なユーザー定義手続きの場合、APPLYはBINDを使用して環境を構築し、一種のシンボル・テーブルを作成し、手続き定義のフォーム・パラメーターとEVALが提供する実際の引数値を関連付ける。手続き定義の本体は、構築された環境とともにEVALに渡され、本体で発生する変数の値を決定するために使用される。
@@ -277,29 +277,29 @@ APPLYはプリミティブとユーザー定義の2種類の手続きを区別�
               (T (LOOKUP1 NAME (CDR VARS) (CDR VALS) ENV))))
 
 Figure 3
-Utility Routines for Maintaining Environments
+環境を管理するユーティリティ・ルーチン
 ```
 
-The interpreter uses several utility procedures for maintaining symbol tables (see Figure 3). A symbol table is represented as a list of buckets; each bucket is a list whose car is a list of names and whose cdr is a list of corresponding values. {Note This ain't A-lists) If a variable name occurs in more than one bucket, the leftmost such bucket has priority; in this way new symbol definitions added to the front of the list can supersede old ones. 
-BIND takes a list of names, a list of values, and a symbol table, and produces a new symbol table which is the old one augmented by an extra bucket containing the new set of associations. (It also performs a useful error check LENGTH returns the length of a list.) 
-VALUE is essentially an interface to LOOKUP. We define it because later, in Part Three, we will want to use different versions of VALUE1 without changing the underlying algorithm in LOOKUP. The check for &UNBOUND catches incorrect references to undefined variables. 
-LOOKUP takes a name and a symbol table, and returns that portion of a bucket whose car is the associated value. (This definition will be more useful later than one in which the value itself is returned.) 
-Note carefully the use of the variable PROCEDURES in the interpreter. When DRIVER-LOOP-1 calls EVAL it passes the current list of defined procedures (both primitive and user-defined). DRIVER-LOOP-1 is the only routine which augments the value of PROCEDURES, and this value is only used in EVAL, when it is passed to VALUE. However, all of the routines APPLY, EVCOND, and EVLIS have to know about PROCEDURES, and dutifully pass it along so that it may be eventually used by EVAL. The set of definitions must be passed along because there is no provision for free variables or side effects; there is no way to have "memory" or "state" other than in passed variables. The absence of free variables effectively causes language to be referentially transparent. However, we sense a disturbing lack of modularity in the use of PROCEDURES (and, to a lesser extent, in the use of ENV look at EVCOND and EVLIS). We will return to this point later.
-Our recursion equations language has no special iteration or looping constructs, such as the Algol for statement or the FORTRAN DO loop. All loops are constructed by arranging for recursive procedures to call themselves or each other. For example, EVCOND (see Figure 2) iterates over the clauses of a COND by calling itself on successive "tails" of the list of clauses. Now such recursive calls may strike the reader familiar with other languages (such as Algol, FORTRAN, PL/I, etc.) on an intuitive level as being rather inefficient for implementing real programs. Even granted that calls might be made fast, they would seem to consume space in the form of return addresses and other control information. Examination of the recursion equations evaluator will show, however, that this phenomenon does not have to occur. This is because no extra information is saved if there is nothing left to do on return from a recursive call. See [SCHEME] and [Debunking] for a more thorough discussion of this.
+インタープリターはシンボル・テーブルを管理するために、いくつかのユーティリティ手続きを使用する（図3参照）。シンボル・テーブルは一連のバケット・リストとして表現される。各バケットは、carが名前のリスト、cdrが対応する値のリストであるリストである。{Note This ain't A-lists} ある変数名が複数のバケツに出現する場合、一番左のバケツが優先される。このようにして、リストの先頭に追加された新しいシンボル定義が古い定義に優先することができる。
+BINDは名前のリスト、値のリスト、シンボルテーブルを受け取り、 古いシンボルテーブルに新しい組み合わせを含むバケットを追加した新しいシンボルテーブルを生成します。( これは便利なエラーチェックも行う。LENGTHはリストの長さを返す)。
+VALUEは基本的にLOOKUPのインターフェースである。後述の第3部では、LOOKUPの基本的なアルゴリズムを変更することなく、異なるバージョンのVALUE1を使用することを想定しているため、VALUEを定義している。UNBOUNDのチェックは、未定義の変数に対する不正な参照を検出する。
+LOOKUPは名前とシンボル・テーブルを受け取り、バケットのうちそのcarが関連する値である部分を返す。(この定義は、値そのものを返すものよりも後々役に立つだろう)。
+インタプリタの変数PROCEDURESの使い方に注意してほしい。DRIVER-LOOP-1がEVALを呼び出すとき、現在定義されている手続き（プリミティブとユーザー定義の両方）のリストを渡す。DRIVER-LOOP-1はPROCEDURESの値を増大させる唯一のルーチンで、EVALではこの値がVALUEに渡された時のみ使用されます。しかし、APPLY、EVCOND、EVLISの全てのルーチンはPROCEDURESについて知らなければならず、最終的にEVALで使用されるように、それをきちんと渡さなければならない。自由変数や副作用の規定がないため、定義のセットは渡されなければならない。渡された変数以外に「メモリー」や「状態」を持つ方法はない。自由変数がないため、言語は参照的に透明である。しかし、PROCEDURESの使い方にはモジュール性の欠如を感じる（また、EVCONDやEVLISのENVの使い方にもモジュール性の欠如を感じる）。この点については後で触れる。
+この再帰式言語は、Algolのfor文やFORTRANのDOループのような特別な反復やループの構成要素を持たない。すべてのループは、再帰プロシージャが自分自身またはお互いを呼び出すように配置することによって構築される。例えば、EVCOND（図2参照）は、CONDの節のリストの連続する「末尾」で自分自身を呼び出すことによって、CONDの節を繰り返し処理する。このような再帰的な呼び出しは、他の言語（Algol、FORTRAN、PL/Iなど）に慣れ親しんだ読者にとっては、実際のプログラムを実装する上で非効率的であると直感的に感じるかもしれない。たとえ呼び出しが高速に行われるとしても、リターン・アドレスやその他の制御情報の形で空間を消費するように思われる。しかし、再帰式評価器を調べれば、このような現象が起こる必要がないことがわかる。なぜなら、再帰呼び出しから戻ったときに何もすることがなければ、余分な情報は保存されないからである。これに関するより詳細な議論は、[SCHEME]と[Debunking]を参照のこと。
 
 
-# Part One - Variable Scoping Disciplines
+# 第1部 - 変数スコープの規律
 
-## Procedures as Data
+## データとしての手続き
 
-The simple LISP described in Part Zero can be a pleasant medium for encoding rather complex algorithms, including those of symbolic mathematics. Often lists are used for representing such structures as the set of coefficients of a polynomial or coordinates of a space vector. Many problems require one to perform an operation on each element of a list and produce a new list of the results. For example, it may be useful to make a list of the squares of each of the elements in a vector. We would write this as follows: 
+第0部で説明したシンプルなLISPは、記号数学のアルゴリズムを含む、かなり複雑なアルゴリズムを記号化するための快適な媒体となり得る。多項式の係数の集合や空間ベクトルの座標のような構造を表現するために、しばしばリストが使われる。多くの問題では、リストの各要素に対して演算を行い、その結果の新しいリストを生成する必要がある。例えば、あるベクトルの各要素の2乗のリストを作るのが便利であろう。これを次のように書く： 
 
 (DEFINE (SQUARELIST L)
         (COND ((NULL L) '())
               (T (CONS (SQUARE (CAR L))
                        (SQUARELIST (CDR L))))))
 
-We find ourselves writing this pattern over and over again:
+私たちはこのパターンを何度も書いていることに気づく：
 
 
 (DEFINE (fLIST L)
@@ -307,20 +307,20 @@ We find ourselves writing this pattern over and over again:
               (T (CONS (f (CAR L))
                        (fLIST (CDR L))))))
 
-where f is a function defined on the elements of our list. It would be nice to be able to define an entity of the programming language which would capture this abstract pattern. The "obvious" solution is to write the variable function as a functional variable which can be accepted as argument: 
+ここでfはリストの要素に対して定義された関数である。この抽象的なパターンを捕らえるプログラミング言語の実体を定義できればいいのだが、それは難しい。「明らかな」解決策は、引数として受け取ることができる関数型の変数として変数関数を書くことである： 
 
 (DEFINE (MAPCAR F L)
         (COND ((NULL L) '())
               (T (CONS (F (CAR L))
                  (MAPCAR F (CDR L))))))
 
-(MAPCAR is the traditional name of this abstraction.) Using this we could say: 
+(MAPCARはこの抽象化の伝統的な名称である）これを用いて我々はこう言うことができる： 
 
 (MAPCAR SQUARE (1 2 3)) 
 
-Unfortunately, this will not work in our recursion equations interpreter. Why not? 
-The essence of the problem is that our interpreter segregates procedures from other kinds of objects. We refer to F as a procedure but it was passed in as a variable. Procedures are only looked up in the PROCEDURES symbol table, but variables are bound in ENV. Moreover, in the call to MAPCAR, SQUARE is used as a variable, which is looked up in ENV, but its definition is only available in PROCEDURES. 
-Let's merge the two symbol tables... How could that hurt? 
+残念ながら、これは再帰方程式のインタープリターでは機能しない。なぜか？
+問題の本質は、インタープリターが手続きを他の種類のオブジェクトと区別していることにある。我々はFを手続きと呼んでいるが、これは変数として渡されたものである。手続きはPROCEDURESシンボル・テーブルでしか検索されないが、変数はENVで束縛される。さらに、MAPCARの呼び出しではSQUAREが変数として使用されており、これはENVで検索されるが、その定義はPROCEDURESでしか利用できない。
+2つのシンボル・テーブルをマージしてみよう。どうだろう？
 
 ```lisp
 (DEFINE (DRIVER-LOOP-1 ENV FORM)
@@ -338,22 +338,22 @@ For EVAL see Figure 5.
 For BIND see Figure 3.
 
 Figure 4
-Modified Driver Loop for Treating Procedures as Objects
+手続きをオブジェクトとして扱うためのドライバ・ループの修正
 ```
 
-We will eliminate PROCEDURES, and use ENV to contain both procedures and other objects. The driver loop requires no particular changes (see Figure 4), except for eliminating the argument () in the calls to EVAL. We will change the name PROCEDURES to ENV throughout as well, but of course that isn't logically necessary, because our language is referentially transparent. (Snicker!) (Note EVALQUOTE} 
-(We have introduced a funny object &PROCEDURE which we use to flag procedural objects. In the previous interpreter it was impossible for the user to request application of an object which was not either a primitive operator or a procedure produced by a DEFINE form. Now that procedures mingle freely with other data objects, it is desirable to be able distinguish them, e.g. for e.g. for error checking in APPLY. We also have some deeper motivations having to do with avoiding the confusion of a procedure with its textual representation, but we do not want to deal with this issue yet.) 
-To fix up the evaluator, we eliminate all occurrences of PROCEDURES. In EVAL, where the name of a procedure in a combination is looked up, we change it to perform the lookup in ENV. Finally, there is a problem in APPLY: if the call to EVAL to evaluate the body is simply 
+今後はPROCEDURESを省き、ENVを手続きとその他のオブジェクトの両方に使用する。ドライバー・ループは、EVALの呼び出しで引数 () をなくす以外は、特に変更する必要はない（図4参照）。また、PROCEDURESという名前もENVに変更するが、もちろん論理的には必要ない。(((((；ﾟДﾟ))))))) {Note EVALQUOTE} 。
+(手続きオブジェクトにフラグを立てるために使うおかしなオブジェクト&PROCEDUREを導入しました。以前のインタプリタでは、プリミティブ演算子でもDEFINEフォームで生成された手続きでもないオブジェクトの実行をユーザが要求することは不可能でした。手続きが他のデータオブジェクトと自由に混在するようになった現在では、例えばAPPLYでのエラーチェックのために、それらを区別できるようにすることが望ましい。また、手続きとそのテキスト表現との混同を避けるという深い動機もあるが、この問題はまだ扱いたくない)。
+評価器を修正するために、PROCEDURESをすべて取り除きます。EVALでは、組み合わせの手続き名が検索されますが、ENVで検索するように変更します。最後に、APPLYに問題がある：本体を評価するためのEVALへの呼び出しが単に 
 
 (EVAL (CADDR FUN)
       (BIND (CADR FUN) ARGS '()))
 
-then the new ENV given to EVAL does not have the procedure definitions in it. Moreover, APPLY does not even have access to an environment which contains the procedure definitions (because its parameter PROCEDURES was deleted)! We can easily fix this. When APPLY is called from EVAL, ENV can be passed along (as PROCEDURES used to be), and the call to EVAL from APPLY can be changed to 
+この場合、EVALに与えられた新しいENVには手続き定義がない。さらに、APPLYは手続き定義を含む環境にアクセスすることさえできない（パラメータPROCEDURESが削除されたため）！これは簡単に修正できる。APPLYがEVALから呼び出されるとき、ENVは（PROCEDURESがそうであったように）一緒に渡すことができ、APPLYからEVALへの呼び出しは次のように変更できます。
 
 (EVAL (CADDR FUN)
       (BIND (CADR FUN) ARGS ENV))
 
-In this way the environment passed to EVAL will contain the new variable bindings added to the old environment containing the procedure definitions. (See Figure 5.) This is indeed a good characteristic: if the name of a defined procedure is used as a local variable (procedural or otherwise), the new binding takes precedence locally, temporarily superseding the global definition. 
+このようにして、EVALに渡される環境は、手続き定義を含む古い環境に追加された新しい変数束縛を含むことになる。(図5参照。) これは実に良い特徴である：定義された手続きの名前がローカル変数(手続き変数であろうとなかろうと)として使われる場合、新しい束縛がローカルで優先され、一時的にグローバル定義に取って代わられる。
 
 ```lisp
 (DEFINE (EVAL EXP ENV)
@@ -389,25 +389,25 @@ In this way the environment passed to EVAL will contain the new variable binding
 For VALUE and BIND see Figure 3.
 
 Figure 5
-Evaluator for Treating Procedures as Objects
+手続きをオブジェクトとして扱うための評価器
 ```
 
-Another good thing about this version of the interpreter is that gross non-modularity of the scattered occurrences of PROCEDURES has disappeared. The problem has not been solved, of course, but we certainly feel relieved that the particular manifestation has been removed! 
-By the way, we also eliminated the explicit tests for 1 and NIL in EVAL, assuming that we can simply put their initial values in the initial environment provided by DRIVER. 
-An interesting property of this interpreter is that free variables now have been given a meaning, though we originally did not intend this. Indeed, in the original recursion equations interpreter, there were free variables in a sense: all procedural variables were free (but they could be used only in operator position in a combination). In our new interpreter, thanks to the merging of the procedural and variable environments, we may have not only bound procedure names, but also free variable names, for after all the two kinds of names are now one. 
-This interpreter differs in only small details from the one in LISP 1.5 [LISP 1.5M]. Both have dynamically scoped free variables (we will elaborate on this point later). We might note that the reference to VALUE in EVAL when computing the first argument for APPLY can be replaced by a reference to EVAL; this does the same thing if a variable appears in the operator position of a combination, and allows the additional general ability to use any expression to compute the procedure. This difference in fact appears in the LISP 1.5 interpreter. There are other slight differences, such as the representation of primitive operators and the handling of procedures which are not primitive or user-defined. Aside from these, the greatest difference between our interpreter and LISP 1.5's is the use of lambda notation. This we will meet in the next section.
+このバージョンのインタープリターのもう一つの良い点は、PROCEDURESの不規則な出現がなくなったことだ。もちろん、この問題が解決されたわけではないが、このような特殊な状況が解消されたことは確かである！
+ところで、DRIVERが提供する初期環境にそれらの初期値を置くだけでよいとして、EVALにおける1とNILの明示的なテストも廃止した。
+このインタプリタの興味深い特性は、自由変数に意味が与えられたことである。実際、元の再帰式インタープリタでは、ある意味で自由変数が存在した。すべての手続き変数は自由であった（ただし、組み合わせの演算子の位置でのみ使用可能であった）。私たちの新しいインタープリターでは、手続き変数と変数環境が統合されたおかげで、拘束された手続き名だけでなく、自由な変数名も持つことができる。
+このインタープリタは、LISP 1.5[LISP1.5M]のインタープリタとは細かい点でしか違いがない。どちらも動的にスコープされる自由変数を持っています（この点については後で詳しく説明します）。APPLYの第1引数を演算するときにEVALのVALUEへの参照をEVALへの参照に置き換えることができることに注意する必要があります；これは、変数が組み合わせの演算子の位置に現れる場合に同じことを行い、手続きを計算するために任意の式を使用する追加の一般的な機能を可能にします。この違いは実際にLISP 1.5インタプリタに現れている。その他にも、プリミティブな演算子の表現や、プリミティブでもユーザー定義でもない手続きの扱いなど、わずかな違いがあります。これらを除けば、我々のインタプリタとLISP 1.5のインタプリタとの最大の違いは、ラムダ記法の使用です。これは次のセクションで説明する。
 
 
-## Local Procedures
+## ローカル手続き
 
-We now have the ability to define and use the MAPCAR procedure. After some more experience in programming, however, we find that, having abstracted the common pattern from our loops, that the remaining part (the functional argument) tends to be different for each invocation of MAPCAR. Unfortunately, our language for all practical purposes requires that we use a name to refer to the functional arguments, because the only way we have to denote new procedures is to DEFINE names for them. We soon tire of thinking up new unique names for trivial procedures:
+これでMAPCAR手続きを定義し、使用することができるようになった。しかし、もう少しプログラミングを経験すると、ループから共通パターンを抽象化した後、残りの部分（関数型引数）がMAPCARの呼び出しごとに異なる傾向があることに気づきます。残念なことに、私たちの言語では機能的引数を参照するために名前を使わなければならない。些細な手続きに対してユニークな名前を考えるのはすぐに飽きてしまう：
 
 (DEFINE (FOOBAR-43 X) (* (+ X 4) 3))
 
 ... (MAPCAR FOOBAR-43 L)
 
-We run the risk of name conflicts; also, it would be nice to be able to write the procedure definition at the single point of use. 
-More abstractly, given that procedures have become referenceable objects in the language, it would be nice to have a notation for them as objects, or rather a way to write an S-expression in code that would evaluate to a procedure. LISP [LISP 1M] adapted such a notation from the A-calculus of Alonzo Church [Church]:
+私たちは名前の衝突のリスクを負うことになる。また、手続き定義を使用する1つのポイントで記述できるのは良いことだ。
+もっと抽象的に言えば、手続きは言語内で参照可能なオブジェクトになったのだから、オブジェクトとしての手続きの記法があってもいいだろう。LISP [LISP 1M]は、このような表記法をAlonzo Church [Church]のλ-calculusから採用した：
 
 (LAMBDA <variables> <body>)
 
