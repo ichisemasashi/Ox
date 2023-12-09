@@ -411,13 +411,13 @@ Figure 5
 
 (LAMBDA <variables> <body>)
 
-Comparing this with the DEFINE notation, we see that it has the same parts: a keyword so that it can be recognized; a list of parameters; and a body. The only difference is the omission of an irrelevant name. It is just the right thing. 
-Given this, we can simply write 
+これをDEFINE記法と比較すると、同じ部分を持っていることがわかる：認識できるキーワード、パラメータのリスト、本体。唯一の違いは、無関係な名前が省略されていることである。ただそれだけである。
+このように考えると、次のように書くことができる。 
 
 (MAPCAR (LAMBDA (X) (* X X)) L) 
 
-rather than having to define SQUARE as a separate procedure. An additional benefit is that this notation makes it very easy for a compiler to examine this code and produce an efficient iterative implementation, because all the relevant code is present locally (assuming the compiler knows about MAPCAR). 
-Installing this notation requires only a two-line change in EVAL (see Figure 6). 
+SQUAREを別の手続きとして定義する必要はありません。さらに、この表記法の利点は、関連するコードがすべてローカルに存在するため、コンパイラがこのコードを調べ、効率的な反復実装を生成するのが非常に簡単になることです（コンパイラはMAPCARを知っていると仮定します）。
+この表記法をインストールするには、EVALを2行変更するだけでよい（図6参照）。
 
 ```lisp
 (DEFINE (EVAL EXP ENV)
@@ -438,7 +438,7 @@ For VALUE see Figure 3.
 For APPLY, EVCOND, and EvLIs see Figure 5.
 
 Figure 6
-Evaluator for LAMBDA-notation (Dynamically Scoped)
+LAMBDA-notationの評価器（動的にスコープされる）
 ```
 
 (The reader might have noticed that all EVAL does for a LAMBDA- expression is replace the word LAMBDA with the word &PROCEDURE, and that we could avoid that work by uniformly using LAMBDA instead of &PROCEDURE as the flag for a procedural object. Given then that EVAL ON a LAMBDA-expression is an identity operation, we can eliminate the handling of LAMBDA İN EVAL merely by requiring the user to write '(LAMBDA .) instead of (LAMBDA .). Although the implementors of most LISPs have in fact done just this ever since LISP1 it is a very bad idea. EVAL is supposed to process expressions and produce their values, and the fact that it might be implemented as an identity operation is no business of the user. The confusion between a procedural object and an expression having that object as its value will lead to serious trouble. (Imagine confusing 15 with (+78), and trying to take the car of the former instead of the latter, or trying to add 3 to the latter instead of the former!) The quoted LAMBDA- expression engineering trick discourages the implementation of a referentially transparent LISP. In Part Four we will see the extreme difficulties for a LISP compiler (or other program-understander) caused by the blatant destruction of referential transparency. {Note QUOTE Shafts the Compiler}) 
