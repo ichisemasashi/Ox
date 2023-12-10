@@ -441,34 +441,34 @@ Figure 6
 LAMBDA-notationの評価器（動的にスコープされる）
 ```
 
-(The reader might have noticed that all EVAL does for a LAMBDA- expression is replace the word LAMBDA with the word &PROCEDURE, and that we could avoid that work by uniformly using LAMBDA instead of &PROCEDURE as the flag for a procedural object. Given then that EVAL ON a LAMBDA-expression is an identity operation, we can eliminate the handling of LAMBDA İN EVAL merely by requiring the user to write '(LAMBDA .) instead of (LAMBDA .). Although the implementors of most LISPs have in fact done just this ever since LISP1 it is a very bad idea. EVAL is supposed to process expressions and produce their values, and the fact that it might be implemented as an identity operation is no business of the user. The confusion between a procedural object and an expression having that object as its value will lead to serious trouble. (Imagine confusing 15 with (+78), and trying to take the car of the former instead of the latter, or trying to add 3 to the latter instead of the former!) The quoted LAMBDA- expression engineering trick discourages the implementation of a referentially transparent LISP. In Part Four we will see the extreme difficulties for a LISP compiler (or other program-understander) caused by the blatant destruction of referential transparency. {Note QUOTE Shafts the Compiler}) 
-The ability to use free variables and local procedures gives us additional freedom to express interesting procedures. For example, we can define a procedure SCALE which multiplies a vector of arbitrary length by a scalar. If the vector is represented as a list of components, then we can use MAPCAR and a local procedure with a free variable: 
+( 読み手はLAMBDA式に対してEVALがすることはLAMBDAという単語を&PROCEDUREという単語に置き換えるだけであり、手続きオブジェクトのフラグとして&PROCEDUREの代わりにLAMBDAを統一的に使用することでその作業を回避できることに気づいたかもしれない。LAMBDA式のEVALはidentity操作であることを考えると、ユーザに(LAMBDA ...)の代わりに'(LAMBDA ...)と書かせるだけで、EVALにおけるLAMBDAの取り扱いをなくすことができます。ほとんどのLISPの実装者は、LISP1以来、実際にこのようにしてきましたが、これは非常に悪い考えです。EVALは式を処理してその値を生成するものであり、それが恒等式演算として実装されるかもしれないという事実は、ユーザには関係ありません。手続きオブジェクトと、そのオブジェクトを値として持つ式との混同は、深刻な問題を引き起こします。(15と(+78)を混同して、後者の代わりに前者のcarを取ろうとしたり、前者の代わりに後者に3を足そうとすることを想像してみてください!) 上記で述べたクオートされたLAMBDA式工学のトリックは参照透過的なLISPの実装を妨げるものである。第4部では、参照透過性をあからさまに破壊することによって、LISPコンパイラ（あるいは他のプログラム理解者）にとって非常に困難なことが起こることを説明します。{Note QUOTE Shafts the Compiler}) 
+自由変数とローカル手続きを使えるようになったことで、興味深い手続きを表現する自由度が増した。例えば、任意の長さのベクトルにスカラーを掛ける手続きSCALEを定義することができる。ベクトルが成分のリストとして表現されるなら、MAPCARと自由変数を使ったローカル手続きが使えます： 
 
 (DEFINE (SCALE S V)
         (MAPCAR (LAMBDA (X) (* X S))
                 V))
 
-Everything would be just peachy keen, except for one small glitch. Suppose that the programmer who wrote SCALE for some reason chose the name L rather than s to represent the scalar: 
+ある小さな不具合を除けば、すべてが順調だ。SCALEを書いたプログラマーが、何らかの理由でスケールを表すのにSではなくLを選んだとしよう： 
 
 (DEFINE (SCALE L V) 
         (MAPCAR (LAMBDA (X) (* X L))
                 V))
 
-Although the version with s works, the version with L does not work. This happens because MAPCAR also uses the name for one of its arguments (that is, a "local" variable). The reference to in the LAMBDA-expression in SCALE refers to the bound in MAPCAR and not to the one bound by SCALE. In general, free variable references in one procedure refer to the bindings of variables in other procedures higher up in the chain of calls. This discipline is called dynamic scoping of variables, because the connection between binding and reference is established dynamically, changing as different procedures are executed. 
-That the behavior of the SCALE program depends on the choice of names for its local variables is a violation of referential transparency. The modularity of the MAPCAR abstraction has been destroyed, because no one can use that abstraction without understanding the details of its implementation. This is the famous "FUNARG problem" [Moses] [LISP History]. 
-If we are to avoid such conflicts between different uses of the same name, we must arrange our language so that the choice of names locally cannot have global repercussions. More specifically, we must have the ability to bind a variable in such a way that it will have a truly local meaning (though in general we might not want all variables to be strictly local we will consider later the possibility of having several types of variables). 
+sを使ったバージョンは機能するが、Lを使ったバージョンは機能しない。これは MAPCAR が引数の名前（つまり "ローカル "変数）を使用しているために起こります。SCALE の LAMBDA 式の中の L への参照は MAPCAR で束縛された L を指し、SCALE で束縛された L を指しません。一般に、ある手続きにおける自由変数への参照は、呼び出しの連鎖の上位にある他の手続きにおける変数の束縛を参照します。変数の束縛と参照は動的に確立され、異なる手続きが実行されるたびに変化するため、この規則は変数の動的スコープと呼ばれます。
+SCALEプログラムの動作がローカル変数の名前の選択に依存することは、参照透明性の違反です。MAPCAR の抽象化のモジュール性は破壊されている。なぜなら、誰もその実装の詳細を理解することなく、その抽象化を使用することはできないからである。これが有名な "FUNARG問題" [Moses] [LISP History]である。
+同じ名前の異なる使い方の間でこのような衝突が起こらないようにするには、ローカルでの名前の選択がグローバルな影響を及ぼさないように言語をアレンジする必要があります。より具体的には、変数が真にローカルな意味を持つように束縛する機能が必要です（一般的には、すべての変数が厳密にローカルである必要はないかもしれませんが、いくつかのタイプの変数を持つ可能性については後で検討します）。
 
 
-## Lexical Scoping
+## レキシカル・スコープ
 
-We now construct an interpreter in which all variables have strictly local usage. This discipline is called lexical scoping of variables, and has been used in many programming languages, including Algol 60 [Naur]. The term "lexical" refers to the fact that all references to a local variable binding are textually apparent in the program. The term static binding is also used, indicating that the connection between binding and reference is unchanging at run time.
-The difficulty in SCALE is that the body of the LAMBDA-expression (* X L) is evaluated using the ENV which was available to EVAL (and so passed to APPLY) when it was working on the body of MAPCAR. But we want the (* X L) to be evaluated using the ENV which was available when the body of SCALE was being evaluated. Somehow we must arrange for this environment to be available for evaluating (* X L).
-The correct environment was available at the time the LAMBDA-expression was evaluated to produce a &PROCEDURE-object. Why not just tack the environment at that point onto the end of the &PROCEDURE-object so that it can be used when the procedure is applied?
-This is in fact the right thing to do. The object we want to give to MAPCAR must be not just the text describing the computation to be performed, but also the meanings of the free variables referenced in that text. Only the combination of the two can correctly specify the computation which reflects the complete meaning of the abstract function to be mapped. This is the first place where we find it crucial to distinguish the three ideas: (1) The program - the text describing a procedure, e.g. in the form of an S-expression; (2) The procedure which is executed by the computer; and (3) The mathematical function or other conceptual operation computed by the execution of the procedure. 
-To install lexical scoping in our interpreter, we must change the treatment of LAMBDA-expressions in EVAL to make the current environment ENV part of the &PROCEDURE-object. We say that the procedure is closed in the current environment, and the &PROCEDURE-Object is therefore called a closure of the procedure, or a closed procedure. We must also change APPLY to bind the new variable-value associations onto the environment in the &PROCEDURE-object, rather than onto that passed by EVAL. When we have done this, we see that in fact the environment passed by EVAL is not used, so eliminate the parameter ENV from the definition of APPLY, and change the invocation of APPLY that occurs in EVAL. Thus, while the handling of LAMBDA-expressions has become more complicated, the handling of ENV has been correspondingly simplified. (See Figure 7.)
-Had we previously adopted the trick described in the preceding section, wherein the user was required to write 
-was required to write '(LAMBDA ...) rather than (LAMBDA ...), it would have been more difficult to adjust the interpreter to accommodate lexical scoping - it would have involved a large change rather than a small tweak. (The change from dynamic scoping to lexical scoping does involve a gross change of programming style, and this is undoubtedly why, once dynamic scoping had historically become the standard discipline, the quotation problem was never cleared up. We will see later that dynamic scoping is valuable technique for producing modularity, but we see no virtue at all in the confusion produced by quoted LAMBDA-expressions. While quoted LAMBDA-expressions do produce dynamic scoping, the support of dynamic scoping does not depend on the quotation of LAMBDA-expressions.) 
-While lexical scoping solves our problems of referential transparency, we will see later that we must in turn pay a large price for it - but it is not a price of run-time efficiency (contrary to popular belief)! 
+ここで、すべての変数が厳密にローカルな使い方をするインタプリタを構築する。これは変数のレキシカル・スコープと呼ばれ、Algol 60 [Naur]を含む多くのプログラミング言語で採用されている。この「レキシカル（lexical）」という用語は、ローカル変数束縛へのすべての参照がプログラム内で明示されることを意味する。静的束縛という用語も使われますが、これは束縛と参照の間の接続が実行時に不変であることを示します。
+SCALEで難しいのは、LAMBDA式の本体(* X L)が、MAPCARの本体を処理するときにEVALが使用可能であった（そしてAPPLYに渡された）ENVを使用して評価されることである。しかし、我々は(* X L)をSCALE本体が評価されているときに使用可能だったENVを使用して評価したい。何らかの方法で、この環境が(* X L)を評価するために利用できるように手配しなければならない。
+正しい環境はLAMBDA式が&PROCEDURE-オブジェクトを生成するために評価されたときに利用可能でした。なぜその時点の環境を&PROCEDURE-objectの末尾に付加して、手続きが適用されたときに使用できるようにしないのでしょうか？
+実際、これは正しいことだ。MAPCARに与えたいオブジェクトは、実行される計算を記述したテキストだけでなく、そのテキストで参照される自由変数の意味も含んでいなければならない。この2つの組み合わせだけが、マッピングされる抽象関数の完全な意味を反映した計算を正しく指定することができるのです。ここで初めて、3つの考え方を区別することが重要であることがわかる： (1)プログラム、つまりS式の形式などで手続きを記述したテキスト、(2)コンピュータによって実行される手続き、(3)手続きの実行によって計算される数学的関数やその他の概念的演算。
+インタプリタにレキシカル・スコープを導入するには、EVALのLAMBDA式の扱いを変更し、現在の環境ENVを&PROCEDURE-オブジェクトの一部としなければならない。現在の環境では手続きは閉じられており、&PROCEDURE-オブジェクトは手続きのクロージャ、または閉じられた手続きと呼ばれます。また、APPLYを変更して、新しい変数と値の関連付けを、EVALで渡される環境ではなく、&PROCEDURE-オブジェクトの環境にバインドするようにしなければならない。APPLYの定義からパラメータENVを削除し、EVALで発生するAPPLYの呼び出しを変更する。このように、LAMBDA式の取り扱いは複雑になったが、ENVの取り扱いはそれに応じて単純化された。(図7参照）。
+前節で説明したようなトリックを採用していた場合、ユーザーは'(LAMBDA式)と書く必要があった。
+動的スコープからレキシカル・スコープへの変更はプログラミング・スタイルの大幅な変更を伴うものであり、これが動的スコープが歴史的に標準的な規律となった後、クォートの問題が解決されなかった理由であることは間違いない。動的スコープがモジュール性を生み出す貴重な技法であることは後述するが、クォートされたLAMBDA式が生み出す混乱には何の美徳もない。クォートされたLAMBDA式は動的スコープを生成するが、動的スコープのサポートはLAMBDA式のクォートには依存しない)。
+レキシカル・スコープは参照透明性の問題を解決してくれますが、その代償として大きな代償を支払わなければならないことが後でわかります！
 
 ```lisp
 (DEFINE (EVAL EXP ENV)
@@ -495,39 +495,39 @@ For VALUE and BNID see Figure 3.
 For EVCOND and EVLIS see Figure 5.
 
 Figure 7
-Evaluator for Lexically Scoped LAMBDA-notation
+レキシカル・スコープ付きLAMBDA-notationの評価器
 ```
 
-Let's see what we have bought. One thing we can do is generalize MAPCAR. After yet more programming experience we find that we write many MAPCAR-like procedures. For example, we might need a kind of MAPCAR where the function F always returns a list, and we want to produce not a list of the lists, but the concatenation of the lists. We might also want to take the sum or the product of all the numbers in a list, or the sum of the cars of all elements in a list. The general pattern is that we look at each element of a list, do something to it, and then somehow combine the results of all these elementwise operations. Another application might be to check for duplicates in a list; for each element we want to see whether another copy follows it in the list. We further generalize the pattern to look at successive trailing segments of the list; we can always take the car to get a single element. 
-We could simply add more procedural parameters to MAPCAR: 
+何を買ったか見てみよう。ひとつはMAPCARを一般化することだ。さらにプログラミングの経験を積むと、MAPCARのような手続きをたくさん書くことに気づく。例えば、関数Fが常にリストを返すような種類のMAPCARが必要で、リストのリストではなく、リストの連なりを作りたいかもしれない。また、リスト内のすべての数値の和や積、あるいはリスト内のすべての要素のcarの和を取りたい場合もある。一般的なパターンは、リストの各要素を見て、それに対して何かを行い、そしてこれらの要素ごとの演算結果を何らかの方法で結合する、というものだ。他の応用例としては、リスト内の重複をチェックすることがある；各要素について、リスト内で別のコピーがそれに続いているかどうかを調べたい。さらに、このパターンを一般化して、リストの末尾の部分を調べることもできる；1つの要素を得るために、いつでもcarを取ることができる。
+MAPCARに手続きパラメーターを追加するだけでよい： 
 
 (DEFINE (MAP F OP ID L)
         (COND ((NULL L) ID)
               (T (OP (F L)
                      (MAP F OP ID (CDR L))))))
 
-Using this, we can make a copy of the list L: 
+これを使えば、リストLのコピーを作ることができる： 
 
 (MAP CAR CONS '() L)
 
-We can simulate (MAPCAR F L): 
+つまり、(MAPCAR F L)をシミュレートすることができる： 
 
 (MAP (LAMBDA (X) (F (CAR X))) CONS '() L)
 
-Indeed, we can write:
+確かに、私たちはこう書くことができる：
 
 (DEFINE (MAPCAR F L) 
         (MAP (LAMBDA (X) (F (CAR X))) CONS '() L))
 
-We can sum the elements of L:
+Lの要素を合計することができる：
 
 (MAP CAR + 0 L) 
 
-We can take the product of the elements of L: 
+Lの要素の積を取ることができる： 
 
 (MAP CAR * 1 L) 
 
-We can count the pairs of duplicate elements of L: 
+Lの重複要素の組を数えることができる： 
 
 (MAP (LAMBDA (X) X)
      (LAMBDA (Y N) (COND ((MEMBER (CAR Y) (CDR Y))
@@ -536,18 +536,18 @@ We can count the pairs of duplicate elements of L:
      0
      L)
 
-If we have occasion to take the sum over lots of lists in different places, we might want to package the operation "sum over list" - we get awfully tired of writing "CAR + 0". We can write:
+異なる場所にあるたくさんのリストの和を取る機会がある場合、"sum over list "という演算をパッケージ化したいと思うかもしれない-"CAR + 0 "と書くのは非常に疲れるのだ。
 
 (DEFINE (MAPGEN F OP ID)
         (LAMBDA (L) (MAP F OP ID L)))
 
-The result of (MAPGEN CAR + 0) we might call SUM - it is a procedure of one argument which will sum the elements of a list. The reason we wrote a procedure to construct SUM, rather than just writing:
+(MAPGEN CAR + 0)の結果をSUMと呼ぶかもしれない。これはリストの要素を合計する引数1つの手続きである。SUMを作る手続きを書いたのは、単にこう書くからではない：
 
 (DEFINE (SUM L)
         (MAP CAR + 0 L))
 
-is that MAPGEN serves as a generalized constructor of such procedures, thus capturing an interesting abstraction - we might call the result of (MAPGEN CAR * 1), for example, PRODUCT, and so on. 
-What is interesting about this is that we can write procedures which construct other procedures. This is not to be confused with the ability to construct S-expression representations. of procedures; that ability is shared by all of the interpreters we have examined. The ability to construct procedures was not available in the dynamically scoped interpreter. In solving the violation of referential transparency we seem to have stumbled across a source of additional abstractive power. While the MAP example may seem strained, this example is quite natural: given a numerical function, to produce a new function which numerically approximates the derivative of the first.
+MAPGENは、このような手続きの一般化された構成子として機能するため、興味深い抽象化が可能になる-たとえば、（MAPGEN CAR * 1）の結果をPRODUCTと呼ぶなど。
+これが面白いのは、他の手続きを構築する手続きを書くことができるということだ。これは手続きのS式表現を構築する能力と混同してはならない。手続きを構築する機能は、動的にスコープされたインタープリターでは利用できなかった。参照透明性の違反を解決することで、私たちはさらなる抽象化能力の源に出くわしたようだ。MAPの例は窮屈に見えるかもしれないが、この例はごく自然なものである：数値関数が与えられたとき、最初の関数の微分を数値的に近似する新しい関数を生成する。
 
 (DEFINE (DERIVATIVE F ΔX) 
         (LAMBDA (X)
@@ -555,12 +555,12 @@ What is interesting about this is that we can write procedures which construct o
                       (F X))
                    ΔX)))
 
-Notice that this is not a symbolic process dealing with the representation of F. The DERIVATIVE procedure knows nothing about the internal structure of F. All it does is construct a new procedure which uses F only by invoking it. The program DERIVATIVE captures (in approximation) the abstraction of "derivative" as a mapping from the space of numerical (and reasonably well-behaved!) functions to itself.
-The ability to define procedures which construct other procedures is powerful. We can use it to construct procedures which behave like data objects. For example, since the only constraints which coNs must (so far) obey are the algebraic identities:
+DERIVATIVE手続きはFの内部構造については何も知らないし、Fを呼び出すことによってのみFを使用する新しい手続きを構築するだけである、ということに注意してほしい。DERIVATIVEプログラムは、（近似的に）「微分」の抽象化を、数値的な（そして適度にお行儀のよい！）関数の空間からそれ自身への写像として捉えている。
+他の手続きを構築する手続きを定義する機能は強力である。これを使えば、データオブジェクトのように振る舞う手続きを構築することができる。例えば、CONSが（今のところ）従わなければならない制約は代数的恒等式だけである：
 
 (CAR (CONS α β)) = α and (CDR (CONS α β)) = β
 
-the value of (CONS α β) can be thought of as a procedure which produces a or β on demand (cf. [Hewitt and Smith] [Fischer]). We can write this as follows:
+(CONS α β)の値は、要求に応じてaまたはβを生成する手続きと考えることができる（[Hewitt and Smith] [Fischer]を参照）。これを次のように書くことができる：
 
 (DEFINE (CONS A D) 
         (LAMBDA (M) 
@@ -571,7 +571,7 @@ the value of (CONS α β) can be thought of as a procedure which produces a or �
 
 (DEFINE (CDR X) (X 1)) 
 
-Here we have envisioned the value of (CONS α β) as a vector of two elements, with zero-origin indexing. However, this definition of CONS makes use of the primitive operator =. We can define the "primitive operators" CONS, CAR, and CDR without using another primitive operator at all! Following [Church], we write:
+ここでは、(CONS α β)の値を2つの要素からなるベクトルとし、ゼロを原点とするインデックスを付けることを想定している。しかし、このCONSの定義では、プリミティブ演算子=を使用している。他のプリミティブ演算子を全く使用せずに、「プリミティブ演算子」CONS、CAR、CDRを定義することができる！[Church]に従い、こう書く：
 
 (DEFINE (CONS A D) 
         (LAMBDA (M) (M A D)))
@@ -582,21 +582,21 @@ Here we have envisioned the value of (CONS α β) as a vector of two elements, w
 (DEFINE (CDR X)
         (X (LAMBDA (A D) D)))
 
-Rather than using 0 and 1 (i.e. data objects) as selectors, we instead use (LAMBDA (A D) A) and (LAMBDA (A D) D) (i.e. procedures). 
-We can think of the LAMBDA-expression which appears as the body of the definition of DERIVATIVE or of CONS as a prototype for new procedures. When DERIVATIVE or CONS is called, this prototype is instantiated as a closure, with certain variables free to the prototype bound to the arguments given to the constructor.
-At this point it looks like we have solved all our problems. We started with a referentially transparent but expressively weak language. We augmented it with procedural objects and a notation for them in order to capture certain notions of abstraction and modularity. In doing this we lost the referential transparency. We have now regained it, and in the process uncovered even more powerful abstraction capabilities.
+セレクタとして0と1（すなわちデータオブジェクト）を使うのではなく、代わりに(LAMBDA (A D) A)と(LAMBDA (A D) D)（すなわち手続き）を使う。
+DERIVATIVEまたはCONSの定義の本体として現れるLAMBDA式は、新しい手続きの原型と考えることができます。DERIVATIVEやCONSが呼び出されると、この原型はクロージャとしてインスタンス化され、原型の自由変数はコンストラクタに与えられた引数に束縛されます。
+この時点で、すべての問題は解決したように見える。我々は、参照透過だが表現力の弱い言語から始めた。それを手続き型オブジェクトとその記法で補強し、抽象化とモジュール化の概念を取り入れた。その際、参照透過性を失ってしまった。そしてその過程で、さらに強力な抽象化機能を発見したのである。
 
 
 
-## Top Levels versus Referential Transparency
+## トップレベル対参照透明性
 
-"The Three Laws of Thermodynamics: 
-1. You can't win. 
-2. You can't break even. 
-3. You can't get out of the game." 
-- Unknown
+「情熱力学の三法則」： 
+1. 勝てない。
+2. 収支を合わせることはできない。
+3. 試合から抜け出せない。" 
+- 不明
 
-There is no free lunch. We have ignored a necessary change to the top level driver loop. We have changed the format of &PROCEDURE-objects. DRIVER-LOOP-1 constructs &PROCEDURE-objects; it must be rewritten to accommodate the change. We must include an environment in each such object. The obvious fix is shown in Figure 8.
+フリーランチなどない。我々は、トップレベルのドライバー・ループに必要な変更を無視してきた。我々は&PROCEDURE-オブジェクトのフォーマットを変更した。DRIVER-LOOP-1は&PROCEDURE-オブジェクトを構築する；変更に対応するために書き直さなければならない。そのようなオブジェクトのそれぞれに環境を含めなければならない。明らかな修正を図8に示す。
 
 ```lisp
 (DEFINE (DRIVER-LOOP-1 ENV FORM)
@@ -617,7 +617,7 @@ For BIND see Figure 3.
 For EVAL see Figure 7.
 
 Figure 8
-Modified Driver Loop for Lexically Scoped LAMBDA-notation
+レキシカルにスコープされたLAMBDA-notationのための修正されたドライバーループ
 ```
 
 It doesn't work. This patch does put the finishing touch on the preservation of referential transparency. It does it so well, that each new definition can only refer to previously defined names! We have lost the ability to make forward references. We can't redefine a procedure which had a bug in it and expect old references to use the new definition. In fact, we cannot use DEFINE to make a recursive procedure. {Note Y-operator} The &PROCEDURE -object for each defined procedure contains environment having only the previously defined procedures.
