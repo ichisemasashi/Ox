@@ -705,8 +705,8 @@ For LOOKUP see Figure 3.
 For EVAL see Figure 7.
 
 Figure 10
-An Alternative Solution for Local Lexical Scoping and Dynamic Top-Level References
-(Modified Top-Level Driver Loop and Environment Lookup)
+ローカル・レキシカル・スコープと動的トップレベル参照の代替ソリューション
+(トップ・レベル・ドライバ・ループと環境検索の変更）
 ```
 
 
