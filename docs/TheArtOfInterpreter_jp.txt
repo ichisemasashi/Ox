@@ -710,13 +710,13 @@ Figure 10
 ```
 
 
-# Part Two - State
+# 第2部 状態
 
-## Decomposition of State
+## 状態の構成要素
 
-We saw in Part One that an interactive top-level loop necessarily violates referential transparency. We wish to deal with the computer as an entity with state, which changes over time by interacting with a user. In particular, we want the computer to change over time by accumulating procedure definitions.
-Just as the user wishes to think of the computer as having state, he may find it conceptually convenient to organize a program similarly: one part may deal with another part having state. Often programs are written for the purpose of analyzing or simulating a physical system. If modules of the program are to reflect the conceptual divisions of the physical system, then the program modules may well need to have independent state variables. Thus the notion of state is not just a programming trick, but may be required by the nature of the problem domain.
-A simpler example of the use of state involves the use of a pseudo-random number generator. A LISP version of one might be:
+第1部で、対話的なトップレベル・ループは必然的に参照透明性に反することを見た。我々はコンピュータを、ユーザーとの対話によって時間と共に変化する状態を持つ実体として扱いたい。特に、手続き定義を積み重ねることで、コンピュータが時間と共に変化することを望む。
+ユーザがコンピュータを状態を持つものとして考えたいように、プログラムを同じように構成することは概念的に便利である：ある部分は状態を持つ別の部分を扱うことができる。プログラムはしばしば、物理システムの解析やシミュレーションを目的として書かれる。プログラムのモジュールが物理システムの概念的な分割を反映するのであれば、プログラムのモジュールは独立した状態変数を持つ必要があるかもしれない。このように、状態という概念は単なるプログラミングのトリックではなく、問題領域の性質によって必要とされる場合がある。
+より単純な状態の使用例としては、擬似乱数生成器の使用がある。LISP版では次のようになる：
 
 (DEFINE (RANDOM SEED) 
         ((LAMBDA (Z) 
@@ -724,10 +724,10 @@ A simpler example of the use of state involves the use of a pseudo-random number
                        (T (+ Z -32768.))))
          (* SEED 899.)))
 
-This version of 'RANDOM uses the power-residue method for a 16-bit two's-complement number representation; the value produced is a pseudo-random integer, and also is the seed for the next call. The caller of RANDOM is required to save this value and supply it on the next call to RANDOM.
-This fact is unfortunate. The caller really has no interest in the workings of RANDOM, and would much prefer to simply call it as "(RANDOM)", for example, and get back a random number - because this would reflect most precisely the abstract notion of "random number generator". Such a generator would have to have state.
-Suppose we are willing to live with this nuisance. Consider now building some larger program using RANDOM. Many levels up, the programmer who writes some high-level routine. very likely does not care at all that a low-level routine uses RANDOM; he may not even know about the existence of that routine. However, if the state of the pseudo-random number generator is to be preserved, that programmer will have to deal with some state quantity he knows nothing about, for the sake of a program ten levels removed from his thinking. Just as PROCEDURES had to be passed all around for the sake of EVAL in Figure 2, so the state of RANDOM must be passed up and down and all around by programs which don't really care. This clearly violates our principle of modularity. (For an example of how bad this can get, see {Note Gaussian}.)
-As another example, suppose that George writes MAPCAR, and Harry uses it. Harry complains that MAPCAR is too slow. George then decides to collect some statistics about the use of MAPCAR, such as the number of times called, the average length of the second argument, and so on. He first writes an experimental MAPCAR to count number of calls:
+このバージョンの'RANDOMは、16ビットの2 の補数表現にべき乗-剰余法を使用する；生成される値は擬似乱数整数であり、次の呼び出しの種にもなる。RANDOMの呼び出し元は、この値を保存し、次にRANDOMを呼び出すときに提供する必要がある。
+この事実は残念なことである。呼び出し元は、RANDOMの動作にはまったく興味がなく、例えば単に「(RANDOM)」と呼び出して乱数を返すことを望むだろう - なぜなら、これは「乱数生成器」という抽象的な概念を最も正確に反映するからである。そのような生成器は状態を持たなければならない。
+このような厄介なことを受け入れるとしよう。ここで、RANDOMを使って何か大きなプログラムを作ることを考えてみよう。高レベルのルーチンを書いているプログラマは、低レベルのルーチンが RANDOM を使っていることなど全く気にしていない可能性が高い；そのルーチンの存在すら知らないかもしれない。しかし、擬似乱数発生器の状態を保持しようとすれば、そのプログラマは自分の思考から10レベル離れたプログラムのために、自分が何も知らない状態の量を扱わなければならなくなる。図2のEVALのためにPROCEDURESがあちこちに渡されなければならなかったのと同じように、RANDOMの状態は、どうでもいいプログラムによって、上にも下にもあちこちに渡されなければならない。これは明らかにモジュール性の原則に違反している。(これがどれほど悪いことになるかの例については、{Note Gaussian}を参照のこと)。
+別の例として、ジョージがMAPCARを書き、ハリーがそれを使うとします。ハリーはMAPCARが遅すぎると文句を言います。そこでGeorgeは、MAPCARの使用に関する統計情報、例えば呼び出された回数や第2引数の平均長さなどを収集することにしました。彼はまず、呼び出し回数をカウントする実験的なMAPCARを書く：
 
 (DEFINE (MAPCAR F L N) 
         (CONS (OLDMAPCAR F L) (+ N 1)))
@@ -737,24 +737,24 @@ As another example, suppose that George writes MAPCAR, and Harry uses it. Harry 
               (T (CONS (F (CAR L))
                        (OLDMAPCAR F (CDR L))))))
 
-and asks Harry to use it for a while in his program. "I had to add an extra argument to keep track of the count,' says George, "and in order to return both the result and the count, I had to cons them together. Please rewrite your program to keep track of the count and pass it on from one call on MAPCAR to the next." Harry's reply is "unprintable".
-Now Bruce comes along and asks Harry how to use Harry's program. Harry says, "Just write (DIFFERENTIATE EXP VAR N), where EXP is the expression to be differentiated, VAR is the variable with respect to which to differentiate, and N is George's statistics counter - but that may go away next week." Bruce gives Harry a funny look, then goes away and writes his own DIFFERENTIATE, using George's documentation for the old MAPCAR, of course, unaware that the new one has been installed...
-George's new MAPCAR conceptually has state. The state information should be local to the definition of MAPCAR, because that information is not anyone else's business, and George has no business requiring everyone else to keep track of it for him. George and Harry and Bruce all wish George had a way to maintain local state information in MAPCAR.
+とハリーに言って、自分のプログラムをしばらく使ってみるように頼んだ。「カウントを追跡するために余分な引数を追加しなければなりませんでした」ジョージは言う、「そして結果とカウントの両方を返すために、それらを一緒にコンスしなければなりませんでした。カウントを記録し、MAPCARの呼び出しから次の呼び出しに渡すようにプログラムを書き直してください」。ハリーの返事は「プリントできません」。
+今度はブルースがやってきて、ハリーのプログラムの使い方をハリーに尋ねます。ハリーは「（DIFFERENTIATE EXP VAR N）と書けばいいんだ。EXPは微分する式、VARは微分する変数、Nはジョージの統計カウンタだ - 来週にはなくなるかもしれないが」と言った。ブルースはハリーを変な目で見てから、自分のDIFFERENTIATEを書きに行った。もちろん、ジョージの古いMAPCARのドキュメントを使ってだ。
+ジョージの新しいMAPCARは概念的に状態を持つ。なぜなら、その情報は他の誰にも関係ないことであり、ジョージは他のみんなに自分のためにそれを記録しておくことを要求する筋合いはないからだ。ジョージもハリーもブルースも、ジョージがMAPCARのローカルな状態についての情報を維持する方法を持つことを望んでいる。
 
 
-## Side Effects and Local State
+## 副作用とローカル状態
 
-Traditionally local state is maintained through some sort of "side effect". We can always avoid the use of side effects if we are willing to pass all state variables around. As we have seen, this requires a monolithic conception of the program structure. If we wish to break a program up into independent modules, each with local state information, we must seek another method.
-We claim that any such method effectively constitutes a side effect. If a module has hidden state, then its behavior can potentially change over time.
-If only one module in the system has local state, then we can hide the side effect by making it the top-level module of the system, as we have done for DRIVER-LOOP. (For an example of this, see (Note Weber).) If more than one module has state, however, then each may perceive changes in the other's behavior. This the essence of side effect.
-The concept of side effect is induced by particular choices of boundaries between parts of a larger system. If a system boundary encloses all processes of interest (the system is closed), we need no concept of side effect to describe that system as a whole in vacuo. If, however, we wish to make an abstraction by dividing the system into modules more than one of which has independent state, then we have by this action created the concept of side effect.
-We are forced to introduce side effects as a technique for constructing modular systems. But side effects violate referential transparency by altering the meanings of expressions; we expect (+ 3 4) always to mean the same thing, but we cannot say the same for (+ 3 (RANDOM)). Two techniques for achieving modularity have come into direct conflict.
-The most common form of side effect in programming languages is the assignment statement, which alters the meaning of a variable. LISP provides this notion in the SETQ construct:
+伝統的に、ローカル状態はある種の「副作用」によって維持される。すべての状態変数を受け渡すことを厭わなければ、副作用の使用を避けることはいつでもできる。これまで見てきたように、これにはプログラム構造をモノリシックに捉える必要がある。もしプログラムを、それぞれがローカルな状態情報を持つ独立したモジュールに分割したいのであれば、別の方法を探さなければならない。
+そのような方法は、事実上、副作用を引き起こすと主張する。あるモジュールが隠された状態を持つ場合、そのモジュールの動作は時間とともに変化する可能性がある。
+システムの中で1つのモジュールだけがローカル状態を持つ場合、DRIVER-LOOPで行ったように、そのモジュールをシステムのトップレベルのモジュールにすることで、副作用を隠すことができる。(この例については、{Note Weber}を参照してください。) しかし、複数のモジュールが状態を持つ場合、それぞれが他のモジュールの挙動に対する変化を検知する可能性があります。これが副作用の本質である。
+副作用の概念は、より大きなシステムの部分と部分の間の境界の選択によって誘導される。システムの境界が、関心のあるすべてのプロセスを包含している（システムが閉じている）場合、そのシステムを全体として説明するために副作用の概念は必要ない。しかし、システムを独立した状態を持つ複数のモジュールに分割して抽象化したい場合、この操作によって副作用の概念が生まれることになる。
+モジュール・システムを構築するテクニックとして副作用を導入せざるを得ない。私たちは(+ 3 4)が常に同じことを意味すると思っているが、(+ 3 (RANDOM))については同じことが言えないのである。モジュール性を達成するための2つのテクニックは、直接競合するようになった。
+プログラミング言語で最も一般的な副作用は、変数の意味を変更する代入文である。LISPはSETQ構文でこの概念を提供している：
 
 (SETQ X 43) 
 
-returns 43, and as a side effect alters the meaning of x so that subsequent references will obtain 43 also.
-With this, George can now write:
+は43を返し、副次効果としてxの意味を変え、それ以降の参照も43を返すようになる。
+これでジョージはこう書けるようになった：
 
 (DEFINE (MAPCAR F L)
         (MAPCAR-1 F L (SETQ N (+ N 1))))
@@ -762,7 +762,7 @@ With this, George can now write:
 (DEFINE (MAPCAR-1 F L HUNOZ)
         (OLDMAPCAR F L))
 
-There are still some minor problems here. The function MAPCAR1 and the variable HUNOZ are used solely to throw away the value of the SETQ form. It is 50 common to use SETQ only for its side effect that another construction, PROGN, is very useful:
+ここにはまだ小さな問題がある。関数MAPCAR1と変数HUNOZは、SETQ形式の値を捨てるためだけに使われている。SETQをその副作用のためだけに使うのはよくあることで、別の構文であるPROGNは非常に便利である：
 
 (PROGN e_1 e_i ... e_N)
 
