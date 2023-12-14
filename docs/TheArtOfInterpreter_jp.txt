@@ -766,7 +766,7 @@ Figure 10
 
 (PROGN e_1 e_i ... e_N)
 
-evaluates each of the forms e, in order, throwing away the values of all but the last one. Notice that we specifically require them to be evaluated in order; this concept did not occur in the specification of our earlier interpreters, because it was not necessary in the absence of side effects. Similarly, it was not useful to be able to throw away values in the absence of side effects. (We did throw away a value in DRIVER-LOOP, but that was one which resulted from calling PRINT, which of course is assumed to have a side effect!) Using PROGN, George can write: 
+は、各フォームeを順番に評価し、最後のe以外の値を捨てます。この概念は、以前のインタープリターの仕様にはなかったもので、副作用がなければ必要なかったからである。同様に、副作用がない限り、値を捨てられることは有用ではありませんでした。(DRIVER-LOOPでは値を捨てましたが、それはPRINTを呼び出した結果の値であり、もちろん副作用があることが前提です！) PROGNを用いて、ジョージはこう書くことができる： 
 
 (DEFINE (MAPCAR F L)
         (PROGN (SETQ N (+ N 1))
