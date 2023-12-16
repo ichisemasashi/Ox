@@ -772,8 +772,8 @@ Figure 10
         (PROGN (SETQ N (+ N 1))
                (OLDMAPCAR F L)))
 
-There remains the problem of the global variable N, which Harry or Bruce might stumble across by accident. George has to have some handle to get at the statistics counter, and any handle George can use intentionally, Bruce and Harry can use accidentally. One thing that George can do is rename N to MAPCAR-STATISTICS-COUNTER, and warn Bruce and Harry not to use a global variable with that name. This is still better than the original situation at least now Bruce and Harry need not change their programs, and it is George's responsibility to find a name which does not conflict. {Note Can George do better?}
-In the case of RANDOM, where the state information is truly local in that no one wants to access it except its owner, we can combine the use of lexical scoping and of side effects to manipulate a completely hidden state variable. For example, suppose we want several independent pseudo-random number generators, initialized with different seeds. We can make a pseudo-random number generator generator as follows:
+グローバル変数Nの問題が残っており、これはハリーやブルースが偶然見つけてしまうかもしれない。ジョージは統計カウンターにアクセスするための何らかのハンドルを持たなければなりませんが、ジョージが意図的に使用できるハンドルは、ブルースやハリーが誤って使用してしまう可能性があります。ジョージができることの1つは、Nの名前をMAPCAR-STATISTICS-COUNTERに変更し、ブルースとハリーにその名前のグローバル変数を使わないように警告することです。これはまだ元の状況よりはましで、少なくともブルースとハリーはプログラムを変更する必要はなく、衝突しない名前を見つけるのはジョージの責任である。{Note Can George do better?｝
+RANDOMの場合、状態の情報は所有者以外には誰もアクセスしたくないという意味で、本当にローカルなものであるため、レキシカル・スコープの使用と副作用の使用を組み合わせて、完全に隠された状態変数を操作することができる。例えば、異なるシードで初期化された複数の独立した擬似乱数生成器が必要だとする。擬似乱数生成器は次のように作ることができる：
 
 (DEFINE (RGEN SEED) 
         (LAMBDA () (PROGN (SETQ SEED
@@ -782,7 +782,7 @@ In the case of RANDOM, where the state information is truly local in that no one
                                  (* SEED 899.)))
                           SEED)))
 
-Each call to RGEN delivers as its value a new pseudo-random number generator which is an instance of the prototype described by the LAMBDA-expression which is the body of RGEN. Each one has a state variable which is its seed. The state of each instance is distinct from that of every other instance. This gives one the power of the own variables of ALGOL 60 without any additional mechanism.
+RGENの各呼び出しは、RGENの本体であるLAMBDA式で記述されるプロトタイプのインスタンスである新しい擬似乱数生成器をその値として返す。各インスタンスはシードである状態変数を持つ。各インスタンスの状態は他のインスタンスとは異なる。これにより、ALGOL60の変数が持つ力を、追加のメカニズムなしに得ることができる。
 
 
 ## Side Effects in the Interpreter
