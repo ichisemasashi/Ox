@@ -785,9 +785,9 @@ RANDOMの場合、状態の情報は所有者以外には誰もアクセスし�
 RGENの各呼び出しは、RGENの本体であるLAMBDA式で記述されるプロトタイプのインスタンスである新しい擬似乱数生成器をその値として返す。各インスタンスはシードである状態変数を持つ。各インスタンスの状態は他のインスタンスとは異なる。これにより、ALGOL60の変数が持つ力を、追加のメカニズムなしに得ることができる。
 
 
-## Side Effects in the Interpreter
+## インタープリタにおける副作用
 
-In order to write a simple interpreter which implements the side effect SETQ, we will postulate the existence of two side effect operators which alter S-expressions:
+副作用SETQを実装する簡単なインタープリターを書くために、S式を変更する2つの副作用演算子の存在を仮定する：
 
 (RPLACA X Y) and (RPLACD X Y)
 
