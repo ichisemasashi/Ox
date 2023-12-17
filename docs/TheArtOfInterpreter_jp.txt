@@ -789,10 +789,10 @@ RGENの各呼び出しは、RGENの本体であるLAMBDA式で記述されるプ
 
 副作用SETQを実装する簡単なインタープリターを書くために、S式を変更する2つの副作用演算子の存在を仮定する：
 
-(RPLACA X Y) and (RPLACD X Y)
+(RPLACA X Y)と(RPLACD X Y)
 
-return the value of x (which must not be atomic), but as a side effect alters × so that its car or cdr, respectively, is the value of Y. (The introduction of operators which modify S-expressions causes a number of nasty problems, which we will consider presently.) We will use these operators to alter the structure of the environment ENV. We modify EVAL to recognize the SETQ construct (see Figure 11). On seeing "SETQ" in the "operator position" of the expression, EVAL dispatches to EVSETQ, after recursively evaluating the value to be assigned. EVSETQ uses LOOKUP to find the effective binding of the variable mentioned in the SETQ. If there is such a binding, RPLACA is used to change the value associated with the variable. If there is no such binding, then the intent is to initialize a top-level variable; EV-TOP-LEVEL-SETQ locates the top-level environment (which is always at the end of any environment) and creates a new binding by altering the environment structure.
-We also modify EVAL to recognize PROGN. EVPROGN is a tail-recursive loop which evaluates each subform of the PROGN form in turn, throwing away each value but the last. {Note PROGN Wizardry}
+はxの値(アトミックであってはならない)を返すが、副作用として×を変更し、それぞれcarまたはcdrがYの値になるようにする(S式を変更する演算子の導入は多くの厄介な問題を引き起こすが、これについては後述する)。これらの演算子を使って環境ENVの構造を変更する。SETQ構造を認識するようにEVALを変更する（図11参照）。式の "演算子の位置 "に "SETQ"があると、EVALは代入される値を再帰的に評価した後、EVSETQにディスパッチします。EVSETQはLOOKUPを使用して、SETQで指定された変数の有効な束縛を見つける。もしそのような束縛があれば、RPLACAを使用して変数に関連する値を変更する 。もしそのような束縛がなければ、トップレベル変数の初期化が意図されていることになります；EV-TOP-LEVEL-SETQはトップレベル環境（これは常にどのような環境でも最後にあります）を探し、環境構造を変更することによって新しい束縛を作成します。
+また、PROGNを認識するようにEVALを変更する。EVPROGNは末尾再帰ループで、PROGNフォームの各サブフォームを順番に評価し、最後の値以外は捨てます。{Note PROGN Wizardry}
 
 ```lisp
 (DEFINE (EVAL EXP ENV)
@@ -836,14 +836,14 @@ For APPLY see Figure 7.
 For LOOKUP1 see Figure 10 (not Figure 3).
 
 Figure 11
-Evaluator with User Side Effects (Assignment to Variables)
+ユーザーの副作用を考慮した評価器（変数への割り当て）
 ```
 
-Because EVSETQ can be used to initialize new top-level variables, it is convenient for DRIVER-LOOP-1 to call EVSETQ when defining a new function (see Figure 12). Unlike the DRIVER-LOOP-1 of Figure 10, this one has no special knowledge about the structure of environments; as before, such knowledge is hidden in environment specialists such as BIND, VALUE, and now EVSETQ. (The value of EVSETQ is not used, but thrown away; we introduce an extra throwaway parameter into the definition of DRIVER-LOOP for this purpose.)
+EVSETQは新しいトップレベル変数の初期化に使用できるので、DRIVER-LOOP-1が新しい関数を定義するときにEVSETQを呼び出すと便利である（図12参照）。図10のDRIVER-LOOP-1とは異なり、このDRIVER-LOOP-1は環境の構造に関する特別な知識を持っていない；以前のように、そのような知識はBIND、VALUE、そして今回のEVSETQのような環境関連の専門家によって隠されている。(EVSETQの値は使用されずに捨てられる；この目的のために、DRIVER-LOOPの定義に追加の捨てパラメータを導入する)。
 
 ```lisp
 (DEFINE (DRIVER)
-        (DRIVER-LOOP <THE -PRIMITIVE-PROCEDURES>
+        (DRIVER-LOOP <THE-PRIMITIVE-PROCEDURES>
         NLI
         (PRINT '|LITHP ITH LITHTENING|)))
 
@@ -866,17 +866,17 @@ Because EVSETQ can be used to initialize new top-level variables, it is convenie
 For EVSETQ see Figure 11.
 
 Figure 12
-Driver Loop for Evaluator with User Side Effects (Assignment to Variables)
+ユーザーの副作用（変数への代入）を伴う評価器のドライバー・ループ
 ```
 
-(Once we have side effects, we don't really need the &LABELED device permit incremental definition of recursive functions; we can just perform a side effect on the top-level environment. We left the &LABELED device in Figure 12 for continuity with the previous examples. "Real" LISP systems use the side effect method. See {Note Driver Loop with Side Effects), and also (Note LABELS with Side Effects).)
+(副作用があれば、&LABELEDデバイスを使用しての再帰関数のインクリメンタルな定義は必要ありません；トップレベルの環境に対して副作用を実行すればよいのです。図12では、前の例との連続性のために&LABELEDデバイスを残しています。「実際の」LISPシステムでは副作用メソッドを使用する。{Note Driver Loop with Side Effects}、また{Note LABELS with Side Effects}を参照のこと)。
 
 
-## Equipotency of SETQ and RPLACA
+## SETQとRPLACAの同一能力
 
-We pulled a fast one when we introduced RPLACA and RPLACD for the sake of implementing SETQ (though we actually only used RPLACA). We used a side effect to define the implementation of side effects. While this makes a fine meta-circular description, it doesn't constitute a definition of side effects founded on the original meta-circular recursion equations interpreter. 
-We could implement an interpreter which would define a side effect without itself using side effects. Such a definition would encapsulate the entire state of the user's data structures into a single interpreter data structure which is passed around by a top-level loop. Constructing such an interpreter would involve turning a regular interpreter inside out (in much the same way GAUSSIAN was everted in (Note Weber}). This is extremely difficult and lengthy, and the module boundaries within the interpreter are so destroyed that the resulting interpreter is nearly impossible to understand. We will spare the reader the details. 
-We settle for a meta-circular description of side effects. Now that we have seen how to implement SETQ in terms of RPLACA and RPLACD, we can also do the reverse, completing the meta-circle (see Figure 13). We use the procedural version of CONS shown earlier, modified to provide two "setting procedures" SA and SD, which provide the ability to alter the car and cdr.
+SETQを実装するためにRPLACAとRPLACDを導入したとき、私たちは早合点しました（実際にはRPLACAしか使いませんでしたが）。私たちは副作用の実装を定義するために副作用を使いました。これは立派なメタ循環記述にはなりますが、本来のメタ循環再帰式インタプリタに基づいた副作用の定義にはなりません。
+私たちは、それ自身が副作用を使用することなく副作用を定義するインタプリタを実装することができる。このような定義では、ユーザーのデータ構造のすべての状態を1つのインタープリター・データ構造にカプセル化し、トップレベルのループでそれを回すことになる。このようなインタプリタを構築するには、通常のインタプリタをそっくり裏返しにする必要がある（GAUSSIANが裏返しにされたのと同じ方法である{Note Weber}）。これは非常に困難で時間がかかり、インタープリター内のモジュール境界が破壊されるため、出来上がったインタープリターを理解することはほとんど不可能である。詳細は割愛する。
+私たちは副作用のメタ循環的な記述に落ち着く。RPLACAとRPLACDの観点からSETQを実装する方法を見たので、逆にメタ循環を完成させることもできます(図13参照)。ここでは、先に示したCONSの手続き版を、carとcdrを変更する機能を提供する2つの「設定手続き」SAとSDを提供するように修正したものを使用します。
 
 ```lisp
 (DEFINE (CONS A D)
@@ -898,23 +898,23 @@ We settle for a meta-circular description of side effects. Now that we have seen
                    (PROGN (SD Y) X))))
 
 Figure 13
-Procedural ("Actors-like") Implementation of CONS and Friends
+CONSとその仲間たちの手続き的（「アクター的」）な実装
 ```
 
-We originally introduced side effects such as SETQ to help us build modules such as RANDOM which have local state. Now, using the technique of constructing procedures, we find that CONS can be viewed as a constructor of modules, just as MAPGEN was. 
-CONS Constructs modules ("cons cells") which use SETQ to maintain a local state. 
+元々SETQのような副作用を導入したのは、ローカルな状態を持つRANDOMのようなモジュールを構築するのに役立てるためだった。さて、手続きを構築するテクニックを使えば、MAPGENがそうであったように、CONSもモジュールのコンストラクタと見なすことができる。
+CONSはSETQを使ってローカルな状態を保持するモジュール（「CONSセル」）を構築する。
 
 
-## Side Effects and Equality
+## 副作用と等価性
 
-"Things are seldom what they seem, Skim milk masquerades as cream..." 
-- Gilbert and Sullivan (H.M.S. Pinafore)
+"物事はめったに見た目どおりではない、スキムミルクはクリームに見せかける..." 
+- ギルバートとサリヴァン（H.M.S.ピナフォア）
 
-"Plus ça change, plus c'est la même chose."
-- Alphonse Karr
+変化すればするほど、同じことが繰り返される"
+- アルフォンス・カー
 
 
-Our descriptions of SETQ and RPLACA, both informal and meta-circular, are imprecise. They admit a number of drastically different interpretations of the behavior of the system. We would all agree that for RPLACA to mean anything at all like what we want, the expression:
+SETQとRPLACAに関する我々の説明は、非公式かつメタ循環的なものであり、不正確なものである。それらはシステムの動作について、多くの大きく異なる解釈を認めている。RPLACAが私たちの望むような意味を持つためには、次のような表現が必要だということに、私たちは皆同意するだろう：
 
 ```lisp
 ((LAMBDA (X) 
@@ -925,7 +925,7 @@ Our descriptions of SETQ and RPLACA, both informal and meta-circular, are imprec
 Puzzle #1 
 ```
 
-should evaluate to Z. But what about this case:
+Zと評価されなければならない。しかし、この場合はどうだろう：
 
 ```lisp
 ((LAMBDA (X Y) 
@@ -937,7 +937,7 @@ should evaluate to Z. But what about this case:
 Puzzle #2 
 ```
 
-Should this evaluate to A or Z? Nearly all LISP systems would produce A, but there are arguments for both possibilities. Similarly, should this:
+これはAとZのどちらに評価されるのだろうか？ほとんどすべてのLISPシステムはAを返すだろうが、どちらの可能性にも議論がある。同様に
 
 ```lisp
 ((LAMBDA (X)
@@ -950,21 +950,20 @@ Should this evaluate to A or Z? Nearly all LISP systems would produce A, but the
 Puzzle #3
 ```
 
-evaluate to A or Z? Again there are arguments for both possibilities. 
-Before we can meaningfully consider these questions, we must have a precise notion of what we mean by "RPLACA". Let us review its description:
+AかZか？ここでも両方の可能性に論拠がある。
+これらの質問を有意義に考える前に、"RPLACA" の意味を正確に理解する必要がある。その説明を復習しよう：
 
-If x has as its value a non-atomic S-expression, and we evaluate the expression (RPLACA X Y), then after this evaluation, the value of the expression (CAR X) is Y. 
+もしxがその値としてアトミックでないS式を持ち、(RPLACA X Y)という式を評価すると、評価後の(CAR X)という式の値はYになる。
 
-This description depends upon a critical assumption. We have a notion of a thing which is the value of X, such that several references to the variable X all refer to the same thing. But what the $&*#@ do we mean by "same"??
-The concept of side effect is inseparable from the notion of equality/identity/sameness. The only way one can observationally determine that a side effect has occurred is when the same object behaves in two different ways at different times. (Note RPLACA Can Alter CAR Instead} Conversely, the only way one can determine that two objects are the same is to perform a side effect on one and look for an appropriate change in the behavior of the other.
-In order to determine the answers to the Puzzles above, we must determine what properties are required of "sameness". There may be different points of view regarding sameness, which may lead to different answers to the Puzzles. 
-If we agree that the answer to Puzzle #1 is z, then we have implicitly adopted the notion of consistency of variable reference, because we have referred to the variable x twice. As a property of the sameness predicate ≡, we write: (≡ X X). We can say that referring to a variable does not make a copy of its value (because if it did, the RPLACA in Puzzle #1 would have changed only a copy of the value of x, and (CAR X) would extract the car of a different copy, producing A).
-Given this, and given that we accept the interpreter of Figure 11 and believe in its meta-circularity, we are forced to conclude that the answer to Puzzle #3 is also z. We must consider all access paths and show that no copying can occur which would allow the answer to be A. The meta-circularity requires that any property of the interpreted language also hold for the text of the interpreter, and vice, versa. The answer to Puzzle #1 requires that variable references not produce implicit copies, and so neither can variable references in the text of the interpreter. (Consistent with this, our particular interpreter has no explicit code in LOOKUP which specifies copying.) The other place in Puzzle #3 where copying might occur is in the binding of U and V. Examining the text of our particular meta-circular interpreter shows that BIND also has no explicit code for copying. There remains the possibility that binding does implicitly copy in the text of the meta-circular interpreter; this would consistently cause copying in the bindings of the interpreted code, because ENV would be copied whenever bound in the text of the interpreter. This, however, would cause the answer to Puzzle #1 to be A, because ENV is bound at other places which would cause incorrect copying. We therefore conclude that no implicit copying can occur, and so the answer to Puzzle #3 is z. 
-We emphasize that this result rests on our acceptance of а particular class of meta-circular interpreters. (These interpreters, however, closely model what real LISP systems do.) There are other languages which do implicitly copy structured values when binding variables, such as Algol 60 when using call-by-value. For such a language, the answer to Puzzle #3 would be A (if we represented the list (A B C) as an Algol 60 array, for example), even though the answer to Puzzle #1 would still be Z. 
-One can argue both for and against copying during binding on the basis of modularity. Copying isolates the caller from the called routine by preventing the called routine from performing under-the-table side- effects on the caller's data objects. Not copying allows data objects to encapsulate independent pieces of state which can be operated on by low-level routines whose details need not be understood by their caller (an example of such a data object is the symbol table of an assembler, with its insertion and lookup routines). 
+この記述は、ある重要な仮定に依存している。私たちはXの値であるものという概念を持っており、それは変数Xに対するいくつかの参照がすべて同じものを指しているようなものである。しかし、「同じ」とは一体どういう意味なのだろうか？
+副作用の概念は、同等性／同一性／同じという概念と切り離せない。副作用が起こったと観察によって判断できる唯一の方法は、同じオブジェクトが異なる時間に2つの異なる振る舞いをするときである。{ Note RPLACA Can Alter CAR Instead}に注意してください。逆に、2つのオブジェクトが同じであると判断できる唯一の方法は、片方に副作用を実行し、もう片方の振る舞いに適切な変化があるかどうかを確かめることです。
+上記のパズルの答えを決定するためには、「同一性」にどのような性質が必要かを決定しなければなりません。「同一性」についての考え方は様々であり、それによってパズルの答えも異なるかもしれない。
+もしパズル1の答えがzであるとの見解に同意するのであれば、変数xを2回参照しているので、変数参照の一貫性という概念を暗黙のうちに採用したことになる。同一性述語≡の性質として、(≡ X X)と書く。変数を参照してもその値のコピーは作られないと言える（もしそうなら、パズル#1のRPLACAはxの値のコピーだけを変更したことになり、(CAR X)は別のコピーのcarを取り出し、Aを生成することになるからだ）。
+このことから、図11のインタープリタを受け入れ、そのメタ循環インタプリタを信じるならば、パズル#3の答えもzであると結論せざるを得ません。すべてのアクセスパスを考慮し、答えがAであることを可能にするようなコピーが発生しないことを示さなければなりません。パズル#1の答えは、変数への参照が暗黙のコピーを生成しないことを要求しています。(これと矛盾しないように、私たちのインタープリターでは、LOOKUPにコピーを指示するような明示的なコードはありません)。パズル#3でコピーが発生する可能性があるもう1つの場所は、UとVの束縛です。私たちの特定のメタ循環インタプリタのテキストを調べると、BINDにもコピーを明示するコードがないことがわかります。メタ循環インタプリタのテキストでは、束縛が暗黙のうちにコピーしている可能性が残っています；この場合、インタプリタのテキストで束縛されるたびにENVがコピーされることになるので、解釈されるコードの束縛に一貫してコピーが発生することになります。しかしながら、この場合、ENVは他の場所でも束縛されるため、間違ったコピーを引き起こすことになり、パズル#1の答えはAになってしまいます。したがって、暗黙のコピーは起こりえないと結論づけ、パズル#3の答えはzとなります。
+この結果は、メタ循環インタプリタの特定のクラスを受け入れるかどうかにかかっていることを強調しておく。(しかし、これらのインタープリタは実際のLISPシステムが行っていることを忠実にモデル化している。 ) 他にも、変数束縛時に暗黙のうちに構造化された値をコピーする言語がある。例えば、call-by-valueを使用するAlgol 60などである。そのような言語では、パズル#1の答えはZでも、パズル#3の答えはAになります（例えばリスト(A B C)をAlgol 60の配列として表現した場合など）。
+束縛時のコピーについては、モジュール性に基づいて賛否両論がある。コピーすることで、呼び出されたルーチンが呼び出し元のデータ・オブジェ クトに対してテーブル下の副作用を実行することを防ぎ、呼び出し元を呼び出された ルーチンから分離することができる。コピーしないことで、データ・オブジェクトは独立した状態の一部をカプセル化することができ、呼び出し元が詳細を理解する必要のない低レベル・ルーチンで操作することができる（このようなデータ・オブジェクトの例として、アセンブラのシンボル・テーブルがあり、挿入ルーチンとルックアップ・ルーチンがある）。
 We now consider Puzzle #2. If we accept that binding and variable referencing do not makes copies, then Puzzle #2 is a question about the nature of CONS: if CONS is called twice with arguments which are the same, are the two results the same? (Note that this is the inverse of Postulate 4 for S-expressions in {Note S-expression Postulates and Notation}.) If the answer is consistently A (as in most real LISP systems), then coNs must generate a new object every time it is called. (It must produce different results if the two sets of arguments differ, and an answer of A to Puzzle #2 requires different results if the two sets of arguments are the same.) CONS perforce contains a side effect. Calls to it are not referentially transparent. 
-The other possibility, given that variable binding and variable referencing do not make copies, is that the answer to Puzzle #2 is z. In this case, CONS of the same arguments must always produce the same result. This choice leads to galloping non-modularity of data structures without compensation. Suppose, for example, we 
-we represent arrays as lists of numbers (a reasonable LISP representation), and want to alter the last element of one such array (using RPLACA). Under this scheme, all arrays whatsoever with the same last element would be magically altered! A language with such characteristics would be extremely difficult to control. 
+The other possibility, given that variable binding and variable referencing do not make copies, is that the answer to Puzzle #2 is z. In this case, CONS of the same arguments must always produce the same result. This choice leads to galloping non-modularity of data structures without compensation. Suppose, for example, we represent arrays as lists of numbers (a reasonable LISP representation), and want to alter the last element of one such array (using RPLACA). Under this scheme, all arrays whatsoever with the same last element would be magically altered! A language with such characteristics would be extremely difficult to control. 
 Supposing now that binding does make copies as in Algol 60, the answer to Puzzle #2 must be A. Here it does not matter whether CONS of the same arguments produces the same result, since the bindings of x and y will make copies anyway. We may, however, consider this variant:
 
 ```lisp
