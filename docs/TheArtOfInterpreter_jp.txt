@@ -975,11 +975,11 @@ Puzzle #2a
 
 ここで私たちは、XとYの表現を(CONS 'A '(B C))に置き換えただけである。もしCONSが常に同じ入力に対して同じオブジェクトを返すのであれば、パズル#2とパズル#2aは束縛がコピーされた場合には異なる答えになるが、束縛がコピーされなかった場合には同じ答えになる可能性がある(古いものが変更されたために、CONSが私たちが敷物を引き抜いたことに気づいて新しいバージョンを生成した場合には、同じ答えにはならないかもしれない!)。また、RPLACAに引数を渡すこと自体が束縛を構成するかどうかという屁理屈もあります - もしそうなら、RPLACAは常にコピーを受け取るので、まったく効果がないはずです！その場合には、RPLACAを組み込みのシステムプリミティブと見なす必要があります；ユーザはそのようなものを定義する方法を持たないでしょう。これは非常に残念なことです。
 RPLACA、CONS、等号の意味に関する多くの設計上の決定について検討しました。もし副作用を全く使えないようにするのであれば、変数によって示されるものへの参照は、それらのもののコピーを作ってはなりません。もしユーザが（システム提供のプリミティブ演算子がそうであるように）引数に永続的な副作用をもたらす手続きを書けるようにするのであれば、コピーを作らない変数束縛メカニズムがなければなりません。(LISPの束縛メカニズムは実際にはコピーを行なわない。Algol 60のコール・バイ・バリュー機構は構造化データをコピーするが、コール・バイ・ネーム機構はコピーしない；これについては第3部で研究する)。 もし変数束縛(または代入)メカニズムがコピーを行わないのであれば、CONSは呼び出しのたびに新しい別個のオブジェクトを生成しなければならない。
-The reader may have noted that we have been talking in circles for the last several paragraphs: in attempting to elucidate the meaning of sameness, we have discussed side effects, and in so doing used the word "same" nearly every other sentence. The point is that it is not possible to define them separately; The meanings of "equality" and "side effect" simultaneously constrain each other. With this in mind, we will investigate the choice of a primitive equality predicate.
-The equality predicate we choose should be sufficiently finely grained to distinguish any two objects which have potentially distinct behavior, yet should not be so finely grained as to distinguish entities which otherwise would have the same behavior. Thus we have two desiderata:
+読者は、ここ数段、私たちが堂々巡りをしていることにお気づきかもしれない：「同一性」の意味を解明しようとして、私たちは副作用について議論し、その際、ほぼすべての文章で「same（同じ）」という単語を使ってきた。重要なのは、両者を別々に定義することは不可能だということである。「同一性」と「副作用」の意味は、同時に互いを拘束する。このことを念頭に置いて、原始的な等式述語の選択について検討する。
+私たちが選ぶ等号述語は、潜在的に異なる振る舞いをする2つの対象を区別するのに十分な細かさであるべきであり、そうでなければ同じ振る舞いをする実体を区別するほど細かくてはならない。このように、私たちには2つの望ましい条件がある：
 
-[1] Two objects which are observed to behave differently must not be equal. 
-[2] Conversely, we would like two objects which are adjudged unequal to exhibit differing behaviors under suitable circumstances.
+[1] 異なる振る舞いをすることが観察される2つのオブジェクトは、同等であってはならない。
+[2] 逆に、同等でないと判断された2つのオブジェクトが、適切な状況下で異なる振る舞いを示すことを期待する。
 
 Any useful equality predicate must satisfy [1]. Unfortunately, satisfying [2] also may be too difficult; the equivalence of behavior for procedural objects is an unsolvable problem. We are thus forced to settle for an equality predicate which may make more distinctions than are strictly necessary.
 LISP has two standard equality predicates: EQUAL and EQ. We exhibited a definition of EQUAL in Part Zero. In Part Zero we also gave a description of EQ, but defined it only on atoms; LISP usually extends EQ to all S-expressions in such a way as to distinguish the results of different calls to CONS (regardless of the arguments given to CONS). Variable references and variable binding "preserve EQness".
