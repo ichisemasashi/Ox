@@ -981,16 +981,16 @@ RPLACA、CONS、等号の意味に関する多くの設計上の決定につい�
 [1] 異なる振る舞いをすることが観察される2つのオブジェクトは、同等であってはならない。
 [2] 逆に、同等でないと判断された2つのオブジェクトが、適切な状況下で異なる振る舞いを示すことを期待する。
 
-Any useful equality predicate must satisfy [1]. Unfortunately, satisfying [2] also may be too difficult; the equivalence of behavior for procedural objects is an unsolvable problem. We are thus forced to settle for an equality predicate which may make more distinctions than are strictly necessary.
-LISP has two standard equality predicates: EQUAL and EQ. We exhibited a definition of EQUAL in Part Zero. In Part Zero we also gave a description of EQ, but defined it only on atoms; LISP usually extends EQ to all S-expressions in such a way as to distinguish the results of different calls to CONS (regardless of the arguments given to CONS). Variable references and variable binding "preserve EQness".
-In the absence of RPLACA ("pure LISP"), EQ and EQUAL both satisfy desideratum [1]. EQUAL, however, makes fewer unnecessary distinctions than EQ. By desideratum [2], EQUAL is therefore preferred to EQ. (The technique of "hash-consing" [Goto] can be used in this situation to make EQ and EQUAL effectively the same.)
-In the presence of side effects such as RPLACA, EQUAL fails to make sufficiently many distinctions. Each call to CONS produces distinct objects, which EQUAL may fail to distinguish. In this case, EQUAL fails desideratum [1]. Thus, in the presence of RPLACA, EQ is the preferred equality predicate.
-In summary, indeed "the more things change, the more they remain the same". Two distinct objects may look the same because one masquerades as the other; they can be operationally distinguished only by purposely altering the behavior of just one of them. Thus the ability to decide whether two objects are the same is directly correlated with the ability to perform side effects on them.
+あらゆる有用な等式述語は[1]を満たさなければならない。残念なことに、[2]を満たすことは難しすぎるかもしれません；手続き的オブジェクトの振る舞いの等価性は解決不可能な問題です。したがって、厳密には必要以上の区別をするかもしれない等式述語に落ち着くことを余儀なくされる。
+LISPには2つの標準的な等式述語がある： EQUALとEQである。EQUALの定義は第0部で 説明した。第0部では、EQの説明も行ったが、アトムに対してのみ定義した；LISPは通常、（CONSに与えられた引数に関係なく）異なるCONS呼び出しの結果を区別するように、EQをすべてのS式に拡張する。変数参照と変数束縛は「EQらしさを維持」する。
+RPLACA（「純LISP」）がない場合、EQとEQUALはともにdesideratum [1]を満たす。しかし、EQUALの方がEQよりも不必要な区別が少ない。したがって、desideratum [2]により、EQUALはEQより優先される。(この場合、"ハッシュ結合" [ Goto ]というテクニックを使うと、EQとEQUALを実質的に同じにすることができる)。
+RPLACAのような副作用がある場合、EQUALは十分 な区別を行うことができない。CONSを呼び出すたびに別個のオブジェクトが生成され、EQUALはそれを区別できないことがある。この場合、EQUALはdesideratum [1]に失敗する。したがって、RPLACAが存在する場合には、EQが望ましい等式述語である。
+要約すれば、「物事は変われば変わるほど、同じであり続ける」ということだ。2つの異なるオブジェクトが同じように見えるのは、一方が他方の仮面をかぶっているからかもしれない；どちらか一方の動作を意図的に変化させることによってのみ、操作上区別することができる。したがって、2つのオブジェクトが同じかどうかを判断する能力は、それらに対して副作用を実行する能力と直結している。
 
-## Dynamic Scoping as a State-Decomposition Discipline
+## 状態分割としての動的スコープ
 
-As we saw in the preceding section, side effects can become rather complicated. To help keep this complexity under control, we ought to abstract and package common patterns of their use.
-Suppose we have a procedure PRINT-NUMBER which prints numbers:
+前のセクションで見たように、副作用はかなり複雑になる可能性がある。この複雑さを抑制するために、副作用の一般的な使用パターンを抽象化し、パッケージ化する必要があります。
+例えば、数字を表示するPRINT-NUMBER手続きがあるとする：
 
 (DEFINE (PRINT-NUMBER N) 
         ((LAMBDA (Q R)
@@ -1000,8 +1000,8 @@ Suppose we have a procedure PRINT-NUMBER which prints numbers:
          (/ N 10.)
          (REMAINDER N 10.)))
 
-Now people find this program very useful and use it in all their programs.
-Normally we want to print numbers in radix 10 (decimal), but occasionally (for example, in a debugging aid) we want to print numbers in other radices, such as 8 or 16. One might generalize the PRINT-NUMBER program to take the radix as an extra argument: 
+今、人々はこのプログラムを非常に便利だと思い、すべてのプログラムで使っている。
+通常は基数10（10進数）で数値を表示したいが、時折（例えばデバッグの補助として）8や16のような他の基数で数値を表示したいことがある。基数を追加引数として取るようにPRINT-NUMBERプログラムを一般化することもできる： 
 
 (DEFINE (PRINT-NUMBER N RADIX)
         ((LAMBDA (Q R)
@@ -1011,7 +1011,7 @@ Normally we want to print numbers in radix 10 (decimal), but occasionally (for e
          (/ N RADIX)
          (REMAINDER N RADIX)))
 
-Of course, then everyone who uses PRINT-NUMBER must supply the radix. This is mildly annoying, because most of the time one wants decimal printing, and one tires of writing "10." all the time. One might write another program for most people to use:
+もちろん、PRINT-NUMBERを使う人は皆、基数を指定しなければならない。というのも、ほとんどの場合、10進数で表示させたいのであり、いつも "10. "と書くのは面倒だからである。多くの人が使えるように別のプログラムを書くこともできる：
 
 (DEFINE (PRINT-10 N) 
         (PRINT-NUMBER N 10.))
