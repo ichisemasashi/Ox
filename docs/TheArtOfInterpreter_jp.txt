@@ -1037,9 +1037,8 @@ RPLACAのような副作用がある場合、EQUALは十分 な区別を行う�
                  (PRINT-NUMBER N))
          8))
 
-We saw in Part One that, precisely because dynamically scoped variables are referentially opaque, we do not want all variables to be dynamically scoped. But we have newly rediscovered dynamic variables in another context and found them desirable. We therefore consider an interpreter which supplies both lexical and dynamic variables (see Figure 14).
-Here we have merged the dynamically scoped variable evaluator (Figure 5) with the lexically scoped evaluator (Figure 11). We changed APPLY to have an extra case, wherein an "open LAMBDA-expression" is effectively closed at the time of its application using the environment of its caller. EVAL is changed to once again supply the environment to APPLY. This interpreter is almost identical to that of LISP 1.5 [LISP 1.5M], with the difference that we write simply (LAMBDA ...) to get a closed procedure where in LISP 1.5 one must write (FUNCTION (LAMBDA ...)); in both cases one 
-must write '(LAMBDA ...) to get an open LAMBDA-expression. 
+第1部では、動的スコープ変数は参照的に不透明であるため、すべての変数を動的スコープ変数にする必要はないことを説明した。しかし、我々は別の文脈で動的変数を新たに発見し、それが望ましいものであることを発見した。そこで、レキシカル変数とダイナミック変数の両方を提供するインタプリタを考えてみる（図14参照）。
+ここでは、動的にスコープされた変数評価器（図5）をレキシカルにスコープされた評価器（図11）に統合した。APPLYは、"open LAMBDA-expression "がその呼び出し元の環境を使用して、その適用時に事実上閉じられるという特別なケースを持つように変更されました。EVALは再びAPPLYに環境を供給するように変更された。このインタプリタはLISP 1.5 [LISP 1.5M]のものとほとんど同じですが、LISP 1.5では(FUNCTION (LAMBDA ...))と書かなければならないのに対して、閉じた手続きを得るために単に(LAMBDA ...)と書かなければならないという違いがあります；どちらの場合でも、開いたLAMBDA式を得るためには'(LAMBDA ...)と書かなければなりません。
 
 ```lisp
 (DEFINE (EVAL EXP ENV)
