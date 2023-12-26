@@ -1074,11 +1074,11 @@ For EVCOND and EVLIS see see Figure 5.
 For LOOKUP1 see Figure 10 (not Figure 3).
 
 Figure 14
-Interpreter with Both Open and Closed Procedures
+オープンとクローズ両方の手続きを持つインタープリター
 ```
 
-Although this is the tradition, it doesn't work very well. The problem is that the lexical variables are not really lexical. Although lexical references cannot incorrectly refer to dynamically intended bindings, the reverse is not true. Dynamic variable references can be captured by bindings intended to be strictly lexical. 
-For example, we might want to write a procedure which packages up information about dealing with RADIX:
+これは伝統ではあるが、あまりうまくはいかない。問題は、レキシカル変数が実際にはレキシカルではないということだ。レキシカル参照は動的に意図された束縛の参照を誤ることはできませんが、逆は真ではありません。動的な変数参照は、厳密には字句どおりであることを意図した束縛によって捕捉さ れる。
+例えば、RADIXの処理に関する情報をパッケージ化した手続きを書きたいとする：
 
 (DEFINE (RADIX-10 FUN) 
         ((LAMBDA (RADIX) (FUN))
