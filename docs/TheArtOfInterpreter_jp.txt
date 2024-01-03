@@ -1084,30 +1084,30 @@ Figure 14
         ((LAMBDA (RADIX) (FUN))
          10.))
 
-This is more general than PRINT-10 in that it allows us to wrap a binding of RADIX around any piece of code, not just a call to PRINT. (In a more realistic example, we might package up the bindings of a dozen parameters in a similar manner.) 
-There are two possibilities: should the argument to RADIX-10 be a closed procedure or an open LAMBDA-expression? If closed:
+これはPRINT-10よりも一般的で、PRINTの呼び出しだけでなく、RADIXの束縛をどのようなコード部分にも適用できる。(もっと現実的な例では、12個のパラメーターの束縛を同じような方法でパッケージ化するかもしれない)。
+RADIX-10の引数は閉じた手続きであるべきか、開いたLAMBDA式であるべきか? 閉じた手続きであれば
 
 (DEFINE (DO-SOMETHING-INTERESTING X FUN) 
         (RADIX-10 (LAMBDA () (FORMAT-HAIR 'FOO (CADR X) FUN))))
 
-(FORMAT-HAIR takes several arguments, one of them a procedure and presumably calls PRINT at some level), then the binding of RADIX in RADIX-10 will not be apparent to PRINT, because the environment of the call to FORMAT-HAIR is that of the closed procedure, which in turn is that of the call to RADIX-10 within DO-SOMETHING-INTERESTING. Thus it fails to work at all. If the argument to RADIX-10 is left open:
+(FORMAT-HAIRはいくつかの引数を取り、そのうちのひとつは手続きで、おそらくあるレベルでPRINTを呼び出す)、RADIX-10のRADIXの束縛はPRINTにはわからない。なぜなら、FORMAT-HAIRの呼び出しの環境は閉じた手続きの環境であり、その環境はDO-SOMETHING-INTERESTING内のRADIX-10の呼び出しの環境だからである。したがって、これはまったく機能しない。RADIX-10への引数を開いたままにした場合：
 
 (DEFINE (DO-SOMETHING-INTERESTING X FUN) 
         (RADIX-10 '(LAMBDA () (FORMAT-HAIR 'FOO (CADR X) FUN))))
 
-then this fails to work at all because of a variable naming conflict with FUN. The third argument passed to FORMAT-HAIR Will evaluate to the argument which was passed to RADIX-10, namely the quoted lambda expression. This is similar to the MAPCAR bug that originally got us thinking about lexical scoping in Part One.
-A solution to this problem is to maintain separate environments for lexical and dynamic variables; this will guarantee that the two kinds cannot interfere with each other. This will require a special syntax for distinguishing references to and bindings of the two kinds of variables. We will choose to encode lexical variables as atomic symbols, as before, and dynamic variables as lists of the form (DYNAMIC x), where x is the name of the dynamic variable. (This choice is completely arbitrary. We could have chosen to encode the two kinds as (LEXICAL ×) and x; or as (LEXICAL ×) and (DYNAMIC x), leaving atomic symbols as such free to encode yet something else; but we have chosen this because in practice most variable references, even in a purely dynamically scoped LISP, are lexical, or can be considered so.)
-In our new interpreter (see Figure 15) we call the two environments ENV (lexical) and DENV (dynamic). The syntax of LAMBDA-expressions is extended to accommodate two kinds of bindings; for example,
+もしこれがFUNに渡された場合は、FUNとの変数名の衝突のため、まったく機能しない。FORMAT-HAIRに渡された第3引数は、RADIX-10に渡された引数、つまりクォートされたラムダ式で評価される。これは、第1部でレキシカル・スコープについて考えるきっかけとなったMAPCARのバグに似ている。
+この問題の解決策は、レキシカル変数と動的変数の環境を分けて管理することである。そのためには、2種類の変数への参照と束縛を区別するための特別な構文が必要になります。ここでは、レキシカル変数をアトミック・シンボル、動的変数を(DYNAMIC x)という形式のリストとしてエンコードすることにします（xは動的変数の名前です）。(この選択は完全に任意である。この2種類を(LEXICAL ×)とx、または(LEXICAL ×)と(DYNAMIC x)とし、アトミックシンボルは他のものを自由にエンコードできるようにすることもできましたが、純粋に動的にスコープされたLISPであっても、実際にはほとんどの変数参照はレキシカルであるか、レキシカルとみなすことができるため、このようにしました)。
+新しいインタプリタ(図15参照)では2つの環境をENV( レキシカル)とDENV( 動的)と呼ぶ。LAMBDA式の構文は2種類のバインディングに対応するように拡張されている；例えば
 
 (LAMBDA (X Y (DYNAMIC Z) W) ...)
 
-takes four arguments, and binds the parameters X, Y, and w lexically, and z dynamically. Using this syntax, we could write RADIX-10 in this way:
+これは4つの引数をとり、パラメータX、Y、wをレキシカルに、zを動的に束縛する。この構文を使うと、RADIX-10はこう書ける：
 
 (DEFINE (RADIX-10 FUN) 
         ((LAMBDA ((DYNAMIC RADIX)) (FUN)) 
          10.))
 
-The code for PRINT-NUMBER would then be written:
+PRINT-NUMBERのコードはこうなる：
 
 (DEFINE (PRINT-NUMBER N) 
         ((LAMBDA (Q R)
@@ -1117,7 +1117,7 @@ The code for PRINT-NUMBER would then be written:
          (/ N (DYNAMIC RADIX))
          (REMAINDER N (DYNAMIC RADIX))))
 
-Most of the extra complexity in Figure 15 is devoted to the parsing of LAMBDA-expression binding lists upon application by APPLY-PROCEDURE. (For the sake of brevity we have omitted the parts of the interpreter which deal with SETQ and PROGN; they could easily be re-inserted.)
+図15の余分な複雑さのほとんどはAPPLY-PROCEDUREによる適用時のLAMBDA式束縛リストの解析に費やされている。(簡潔にするために、SETQとPROGNを扱うインタプリタの部分は省略した；それらは簡単に挿入し直すことができる)。
 
 ```lisp
 (DEFINE (EVAL EXP ENV DENV)
@@ -1165,32 +1165,32 @@ For VALUE, BIND, and LOOkUP see Figure 3.
 For LOOKUP1 see Figure 10.
 
 Figure 15
-Interpreter with Separate Lexical and Dynamic Variables
+レキシカル変数と動的変数を分離したインタープリター
 ```
 
-Dynamic scoping provides an important abstraction for dealing with side effects in a controlled way. A low-level procedure may have state variables which are not of interest to intermediate routines, but which must be controlled at a high level. Dynamic scoping allows any procedure to get access to parts of the state when necessary, but permits most procedures to ignore the existence of the state variables. The existence of many dynamic variables permits the decomposition of the state in such a way that only the part of interest need be dealt with. 
-If dynamic variables are integrated with the lexical environment, intractable dilemmas are encountered. (We have not considered here all possible such integration schemes, but the authors have found such difficulties with every such scheme they have examined.) We have therefore presented an interpreter in which environments for the two kinds of variable are separated.
+動的スコープは、制御された方法で副作用を扱うための重要な抽象化を提供する。低レベルの手続きは、中間ルーチンには関係ないが、高レベルで制御しなければならない状態変数を持つことがある。動的スコープにより、どの手続きも必要なときに状態の一部にアクセスすることができますが、ほとんどの手続きは状態変数の存在を無視することができます。多くの動的変数が存在することで、必要な部分のみを扱うように状態を分解することができる。
+動的変数がレキシカル環境と統合されると、難解なジレンマにぶつかる。(ここではそのような統合スキームをすべて検討したわけではないが、著者らは検討したすべてのスキームでそのような困難を発見している)。そこで、2種類の変数の環境を分離したインタプリタを紹介する。
 
 
-# Summary
+# まとめ
 
-We examined the effects of various language design decisions on the programming styles available to a user of the language, with particular emphasis on the ability to incrementally construct modular systems. At each step we exhibited an interactive meta-circular interpreter for the language under consideration. Each new interpreter was the result of an incremental change to the previous interpreter.
-We started with a simple interpreter for LISP recursion equations. In order to capture certain abstractions we were forced to introduce procedural data. This in turn forced consideration of the meanings of free variables in a procedure, for the simplest extension unexpectedly introduced dynamic scoping of variables.
-We were compelled to turn from dynamic scoping to lexical scoping to preserve the integrity of procedural abstractions. The referentially transparent language thus obtained is richer than expected. It allows the definition of procedures which construct other procedures by instantiation of a prototype. Unfortunately, we found that complete referential transparency in a language makes it impossible to construct an interactive interface to the interpreter. But such an interface is necessary to satisfy another requirement of modular construction: that parts of a program can be independently defined, replaced, and debugged. We were forced to give up absolute referential transparency to admit an interactive interface.
-The problems of the interactive interface led us to consider the notion of state as a dimension of abstraction. Just as we didn't want to have textually monolithic programs, we wanted to avoid programs which manipulate a monolithic representation of the state. The decomposition of the state of a system into several independent parts induces the notion of a side effect. Side effects only make sense relative to a definition of equality on the space of data objects. But the definition of equality itself depends simultaneously on the notion of side effect. Only a few of the choices of equality predicate and side effect notion are consistent with the requirements of modular construction.
-The introduction of side effects is inconsistent with referential transparency. But since both are important to support modular construction we must accept an engineering trade-off between them. We were led to look for controlled patterns of side effects which can be easily understood and safely applied. We discovered that one such pattern is equivalent to the use of dynamically scoped variables we discussed earlier. We investigated how to construct a system which integrates lexical and dynamic scoping in a smooth way.
-There are many issues yet to be explored. The introduction of side effects raises questions about order of evaluation. An interesting order provided by Algol 60 is call-by-name. This discipline, so unlike LISP's, is induced from a different notion of procedure, expressed as the "copy rule". This idea is a syntactic one, and so differs in flavor from the procedural ideas embodied by the interpreters we have presented. Consideration of syntactic transformations leads to the notion of procedures, such as macros, compilers, and simplifiers. We will explore all of this in Parts Three and Four. 
+我々は、様々な言語設計上の決定が、その言語のユーザが利用可能なプログラミングスタイルに与える影響を、特にモジュールシステムを漸進的に構築する能力に重点を置いて調べた。各段階において、我々は検討中の言語用の対話型メタ循環インタプリタを示した。それぞれの新しいインタープリターは、前のインタープリターに対する漸進的な変更の結果であった。
+我々はLISPの再帰式用の単純なインタープリターから始めた。ある抽象化されたものを理解するために、手続き的なデータを導入せざるを得なかった。その結果、手続きにおける自由変数の意味を考慮する必要に迫られ、最も単純な拡張では予期せず変数の動的スコープが導入された。
+手続き的抽象化の完全性を保つために、動的スコープからレキシカル・スコープに変更せざるを得なかった。こうして得られた参照透過言語は、予想以上に豊かである。プロトタイプのインスタンス化によって他の手続きを構築する手続きを定義することができる。残念なことに、言語における完全な参照透過性は、インタプリタとの対話的なインタフェースを構築することを不可能にすることがわかった。しかし、このようなインターフェイスは、モジュール構築のもう一つの要件である、プログラムの一部を独立に定義、置換、デバッグできるという要件を満たすために必要である。われわれは、対話的インターフェイスを認めるために、絶対的な参照透過性をあきらめざるを得なかった。
+インタラクティブ・インターフェースの問題から、抽象化の次元として状態の概念を考えることになった。テキスト的にモノリシックなプログラムを作りたくなかったのと同じように、状態のモノリシックな表現を操作するプログラムも避けたかった。システムの状態をいくつかの独立した部分に分解することで、副作用という概念が生まれる。副作用は、データ・オブジェクトの空間における等式の定義に対してのみ意味を持つ。しかし、同等性の定義そのものは、同時に副作用の概念に依存する。等式述語と副作用の概念の選択のうち、モジュール構築の要件と一致するものはわずかである。
+副作用の導入は参照透明性と矛盾する。しかし、どちらもモジュール構築をサポートするために重要であるため、両者の間の工学的トレードオフを受け入れなければならない。私たちは、理解しやすく安全に適用できる副作用の制御パターンを探すことになった。そのようなパターンの1つが、先に説明した動的スコープ変数の使用と同等であることを発見した。我々は、レキシカル・スコープと動的スコープをスムーズに統合するシステムを構築する方法を調査した。
+まだ検討すべき課題は多い。副作用の導入は、評価の順序に関する問題を提起する。Algol 60が提供する興味深い順序は、call-by-nameである。この規律はLISPとは異なり、"コピールール "として表現される異なる手続き概念から導かれる。この考え方は構文的なものであるため、これまで紹介してきたインタープリタが具現化する手続き的な考え方とは趣が異なる。構文変換を考えることは、マクロ、コンパイラ、シンプリファイアといった手続きの概念につながる。第3部と第4部では、このすべてを探求する。
 
 
-# Acknowledgements
+# 謝辞
 
-We would like to thank Johan De Kleer, Daniel L. Weinreb, Julie Sussman, Carl Hewitt, Richard Stallman, Jon Doyle, and Mitch Marcus for reading our draft. They found few bugs and helped us refine our presentation. We also want to thank Hal Abelson and Robert Fano for help and encouragement. Finally, we must thank John McCarthy. Besides responding to our messages and answering questions about the early history of LISP, it was all his idea in the first place and we are continually amazed at the beauty and power of his conception.
+我々の草稿を読んでくれたJohan De Kleer, Daniel L. Weinreb, Julie Sussman, Carl Hewitt, Richard Stallman, Jon Doyle, Mitch Marcusに感謝したい。彼らはいくつかのバグを発見し、プレゼンテーションを洗練させる手助けをしてくれた。また、Hal AbelsonとRobert Fanoにも助けと励ましをいただいた。最後に、John McCarthyに感謝しなければならない。私たちのメッセージに応え、LISPの初期の歴史についての質問に答えてくれただけでなく、そもそもはすべて彼のアイデアであり、私たちは彼の発想の美しさと力に驚かされ続けている。
 
 # Notes
 
 ## {Can George do Better?}
 
-The problem here is that George needs access to the statistics counter without giving that access to anyone else. As described in the next example George can make the counter an own variable, but how can he get access to it? One idea is that George can define MAPCAR in the following manner:
+ここで問題となるのは、ジョージが統計カウンターにアクセスしたいが、そのアクセス権を他の誰にも渡さないことである。次の例で説明するように、ジョージはカウンターを独自の変数にすることができるが、どうやってアクセスできるようになるのだろうか？一つのアイデアとして、ジョージはMAPCARを次のように定義することができる：
 
 ((LAMBDA (N) 
          (PROGN (SETQ MAPCAR 
@@ -1200,7 +1200,7 @@ The problem here is that George needs access to the statistics counter without g
                 (LAMBDA () N)))
  0)
 
-This expression defines MAPCAR by SETQing (See (Note Driver Loop with Side Effects}.) it to an appropriate procedure. It then returns, as a value, an anonymous procedure which accesses the value of the statistics counter. If George saves this value and uses it to get at the counter when he needs it, he will have isolated it completely from everyone else!
+この式は、MAPCARを適切な手続きへSETQ({Note Driver Loop with Side Effects}を参照)することによって定義します。そして、統計カウンタの値にアクセスする匿名手続きを値として返します。Georgeがこの値を保存しておき、必要なときにそれを使ってカウンタにアクセスすれば、他の誰からも完全に隔離されたことになる！
 
 
 ## {Debugging}
