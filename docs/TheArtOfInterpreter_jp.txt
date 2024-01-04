@@ -1206,13 +1206,13 @@ Figure 15
 ## {Debugging}
 
 
-It has been suggested that it is possible always to write correct programs. Such a situation would eliminate the need for debugging. The problem with this idea is that a crucial part of the problem-solving strategy is the decomposition of problems into presumably independent subproblems. There is no guarantee that this is possible in general, but even when it is not possible, there are often general strategies for approximating a solution to a problem by composing the solutions to almost independent subproblems. Often one can make progress on the solution to a hard problem by considering the solution of a simplified version of the problem which is similar in some essential aspect to the original one but which differs from it in detail. Once the solutions to the subproblems are obtained, they must be fitted together, and the details of the interactions smoothed out. The fixing of unanticipated interactions is debugging.
-Even in those cases where a decomposition into completely independent subproblems is possible, it is not always feasible. In order to be sure that the solutions to the subproblems are really independent it is necessary to understand both the problem and the possible implementations and interactions of subsolutions so completely that one must effectively solve the entire problem before choosing the correct decomposition. This compromises the decomposition strategy.
+つまり、常に正しいプログラムを書くことが可能なのだ。そのような状況であれば、デバッグの必要はなくなる。この考え方の問題点は、問題解決戦略の重要な部分が、問題をおそらく独立した部分問題に分解することである。これが一般的に可能であるという保証はないが、不可能な場合でも、ほとんど独立した部分問題の解を合成することによって問題の解を近似的に求める一般的な戦略がしばしば存在する。多くの場合、難問の解を求めるには、元の問題とは本質的な点で似ているが、細部では異なる問題の簡略版の解を考えることで前進することができる。部分問題の解が得られたら、それらを合わせ、相互作用の詳細を平滑化しなければならない。予期せぬ相互作用の修正がデバッグである。
+完全に独立した部分問題への分解が可能な場合であっても、常に実行可能とは限らない。部分問題の解が本当に独立であることを確認するためには、正しい分解を選択する前に問題全体を効果的に解かなければならないほど、問題と可能な部分解の実装と相互作用の両方を完全に理解する必要がある。これでは分解戦略が台無しである。
 
 
 ## {Driver Loop with Side Effects}
 
-This driver loop (Figure N1) is similar to the one in Figure 8 (which didn't work). This one does work because, although top-level procedure definitions are closed in the current top-level environment, that environment is changed using a side effect when new definitions are made.
+このドライバ・ループ（図N1）は、図8のもの（これは動作しなかった）に似ている。なぜなら、トップレベルの手続き定義は現在のトップレベル環境では閉じられるが、新しい定義がなされると、その環境は副作用を使って変更されるからである。
 
 ```lisp
 (DEFINE (DRIVER-LOOP-1 ENV FORM)
@@ -1233,7 +1233,7 @@ For EVAL and EVSETQ see Figure 11.
 For LOOKUP1 see Figure 3 (not Figure 10, despite Figure 11!).
 
 Figure N1 
-Implementation of DRIVER-LOOP Using Side Effects
+副作用を利用したDRIVER-LOOPの実装
 ```
 
 ## {EVALQUOTE}
