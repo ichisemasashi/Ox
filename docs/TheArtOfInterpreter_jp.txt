@@ -1238,7 +1238,7 @@ Figure N1
 
 ## {EVALQUOTE}
 
-The top level of LISP 1 [LISP 1M] and LISP 1.5 [LISP 1.5M] actually was not at all like the one presented here. Rather than reading one S- expression and giving it to EVAL, it read two S-expressions and gave them to APPLY. Such a top level is called an EVALQUOTE top level (see Figure N2). 
+LISP 1 [LISP 1M]とLISP 1.5 [LISP 1.5M]のトップ・レベルは、実はここで紹介したものとは全く違っていた。1つのS式を読み取ってEVALに渡すのではなく、2つのS式を読み取ってAPPLYに渡すのである。このようなトップレベルはEVALQUOTEトップレベルと呼ばれる（図N2参照）。
 
 ```lisp
 (DEFINE (DRIVER-LOOP-1 PROCEDURES FORM1)
@@ -1258,11 +1258,11 @@ For APPLY see Figure 2.
 For BIND see Figure 3.
 
 Figure N2
-Driver Loop for an EVALQUOTE Top Level
+EVALQUOTEトップレベルのドライバーループ
 ```
 
-This driver loop is somewhat nicer than the one in Figure 1, because the one in Figure 1 had an essentially useless COND clause. The case of typing an atom was not useful, because there were no top-level values for variables. Once we introduce procedural objects, this is no longer true. But EVALQUOTE requires an inconsistency of notation: at the top level one must write CAR((A . B)), whereas in the middle of a program one would write (CAR '(A . B)). 
-The notion of EVALQUOTE also has some theoretical motivation, if one thinks of LISP as a universal machine akin to a universal Turing machine. In this model one takes a description of a machine to be simulated and a description of its input data, and gives them to the universal machine to process. In LISP, the universal machine is APPLY. 
+このドライバー・ループは、図1のものよりも幾分すっきりしている。なぜなら、図1のものには本質的に役に立たないCOND句があったからだ。アトムをタイプする場合は、変数のトップレベルの値がなかったので、役に立たなかった。手続き型オブジェクトを導入すれば、このようなことはなくなる。トップレベルではCAR((A . B))と書かなければならないが、プログラムの途中では(CAR '(A . B))と書くことになる。
+LISPを万能チューリング機械に似た万能機械と考えれば、EVALQUOTEの概念にも理論的な意味がある。このモデルでは、シミュレートする機械の記述と入力データの記述を取り、それらを処理するために万能機械に与える。LISPでは、万能機械はAPPLYである。
 
 
 ## {Gaussian}
